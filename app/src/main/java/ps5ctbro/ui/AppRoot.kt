@@ -10,16 +10,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
+import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppDrawerContent
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppTopBar
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.PlaceholderScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
 import kotlinx.coroutines.launch
@@ -28,6 +32,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AppRoot(
     speakerUiState: AudioUiState,
+    adaptiveTriggersUiState: AdaptiveTriggersUiState,
     onStartStreamClick: () -> Unit,
     onStopStreamClick: () -> Unit,
     onApplySpeakerRouteClick: () -> Unit,
@@ -37,13 +42,36 @@ fun AppRoot(
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
-    onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit
+    onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
+    onLeftTriggerChanged: (AdaptiveTriggerConfig) -> Unit,
+    onRightTriggerChanged: (AdaptiveTriggerConfig) -> Unit,
+    onAdaptiveTriggersScreenVisible: () -> Unit,
+    onAdaptiveTriggersScreenHidden: () -> Unit,
+    onApplyTriggersClick: () -> Unit,
+    onRefreshTriggerConnectionClick: () -> Unit,
+    onResetTriggersClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     var currentSection by rememberSaveable {
         mutableStateOf(AppSection.SPEAKER)
+    }
+
+    val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
+
+    DisposableEffect(adaptiveScreenVisible) {
+        if (adaptiveScreenVisible) {
+            onAdaptiveTriggersScreenVisible()
+        } else {
+            onAdaptiveTriggersScreenHidden()
+        }
+
+        onDispose {
+            if (adaptiveScreenVisible) {
+                onAdaptiveTriggersScreenHidden()
+            }
+        }
     }
 
     ModalNavigationDrawer(
@@ -53,6 +81,9 @@ fun AppRoot(
                 currentSection = currentSection,
                 onSectionSelected = { selected ->
                     currentSection = selected
+                    scope.launch { drawerState.close() }
+                },
+                onCloseClick = {
                     scope.launch { drawerState.close() }
                 }
             )
@@ -98,6 +129,17 @@ fun AppRoot(
                                 onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
                                 onHardwareVolumeButtonsControlControllerChanged =
                                     onHardwareVolumeButtonsControlControllerChanged
+                            )
+                        }
+
+                        AppSection.ADAPTIVE_TRIGGERS -> {
+                            AdaptiveTriggersScreen(
+                                uiState = adaptiveTriggersUiState,
+                                onLeftTriggerChanged = onLeftTriggerChanged,
+                                onRightTriggerChanged = onRightTriggerChanged,
+                                onApplyClick = onApplyTriggersClick,
+                                onRefreshConnectionClick = onRefreshTriggerConnectionClick,
+                                onResetClick = onResetTriggersClick
                             )
                         }
 

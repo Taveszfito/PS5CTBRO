@@ -13,14 +13,17 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.DueBoysenberry1226.ps5ctbro.adaptive.TriggerSide
 import com.DueBoysenberry1226.ps5ctbro.service.MediaProjectionForegroundService
 import com.DueBoysenberry1226.ps5ctbro.ui.AppRoot
+import com.DueBoysenberry1226.ps5ctbro.ui.adaptive.AdaptiveTriggersViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PS5CTBroTheme
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: SpeakerViewModel by viewModels()
+    private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
 
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -48,9 +51,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             PS5CTBroTheme {
                 val speakerUiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
 
                 AppRoot(
                     speakerUiState = speakerUiState,
+                    adaptiveTriggersUiState = adaptiveTriggersUiState,
                     onStartStreamClick = ::handleStartStreamClick,
                     onStopStreamClick = viewModel::stopStreaming,
                     onApplySpeakerRouteClick = viewModel::applySpeakerRoute,
@@ -61,26 +66,35 @@ class MainActivity : ComponentActivity() {
                     onRouteCh4Changed = { viewModel.setChannelEnabled(channel = 4, enabled = it) },
                     onMutePhoneWhileStreamingChanged = viewModel::setMutePhoneWhileStreaming,
                     onHardwareVolumeButtonsControlControllerChanged =
-                        viewModel::setHardwareVolumeButtonsControlController
+                        viewModel::setHardwareVolumeButtonsControlController,
+                    onLeftTriggerChanged = {
+                        adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.LEFT, it)
+                    },
+                    onRightTriggerChanged = {
+                        adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.RIGHT, it)
+                    },
+                    onAdaptiveTriggersScreenVisible = adaptiveTriggersViewModel::onScreenVisible,
+                    onAdaptiveTriggersScreenHidden = adaptiveTriggersViewModel::onScreenHidden,
+                    onApplyTriggersClick = adaptiveTriggersViewModel::applyCurrentState,
+                    onRefreshTriggerConnectionClick = adaptiveTriggersViewModel::refreshConnection,
+                    onResetTriggersClick = adaptiveTriggersViewModel::resetTriggers
                 )
             }
         }
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_VOLUME_UP -> {
-                    if (viewModel.handleHardwareVolumeButton(+1)) return true
-                }
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (viewModel.handleHardwareVolumeButton(+1)) return true
+            }
 
-                KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    if (viewModel.handleHardwareVolumeButton(-1)) return true
-                }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                if (viewModel.handleHardwareVolumeButton(-1)) return true
             }
         }
 
-        return super.dispatchKeyEvent(event)
+        return super.onKeyDown(keyCode, event)
     }
 
     private fun handleStartStreamClick() {
