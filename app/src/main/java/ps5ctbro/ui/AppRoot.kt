@@ -23,7 +23,10 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppDrawerContent
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppTopBar
+import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
+import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.PlaceholderScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
 import kotlinx.coroutines.launch
@@ -33,6 +36,7 @@ import kotlinx.coroutines.launch
 fun AppRoot(
     speakerUiState: AudioUiState,
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
+    ledUiState: LedUiState,
     onStartStreamClick: () -> Unit,
     onStopStreamClick: () -> Unit,
     onApplySpeakerRouteClick: () -> Unit,
@@ -49,7 +53,13 @@ fun AppRoot(
     onAdaptiveTriggersScreenHidden: () -> Unit,
     onApplyTriggersClick: () -> Unit,
     onRefreshTriggerConnectionClick: () -> Unit,
-    onResetTriggersClick: () -> Unit
+    onResetTriggersClick: () -> Unit,
+    onLedConfigChanged: (LedConfig) -> Unit,
+    onLedScreenVisible: () -> Unit,
+    onLedScreenHidden: () -> Unit,
+    onApplyLedClick: () -> Unit,
+    onRefreshLedConnectionClick: () -> Unit,
+    onResetLedClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -59,6 +69,7 @@ fun AppRoot(
     }
 
     val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
+    val ledScreenVisible = currentSection == AppSection.LEDS
 
     DisposableEffect(adaptiveScreenVisible) {
         if (adaptiveScreenVisible) {
@@ -70,6 +81,20 @@ fun AppRoot(
         onDispose {
             if (adaptiveScreenVisible) {
                 onAdaptiveTriggersScreenHidden()
+            }
+        }
+    }
+
+    DisposableEffect(ledScreenVisible) {
+        if (ledScreenVisible) {
+            onLedScreenVisible()
+        } else {
+            onLedScreenHidden()
+        }
+
+        onDispose {
+            if (ledScreenVisible) {
+                onLedScreenHidden()
             }
         }
     }
@@ -140,6 +165,16 @@ fun AppRoot(
                                 onApplyClick = onApplyTriggersClick,
                                 onRefreshConnectionClick = onRefreshTriggerConnectionClick,
                                 onResetClick = onResetTriggersClick
+                            )
+                        }
+
+                        AppSection.LEDS -> {
+                            LedScreen(
+                                uiState = ledUiState,
+                                onConfigChanged = onLedConfigChanged,
+                                onApplyClick = onApplyLedClick,
+                                onRefreshConnectionClick = onRefreshLedConnectionClick,
+                                onResetClick = onResetLedClick
                             )
                         }
 

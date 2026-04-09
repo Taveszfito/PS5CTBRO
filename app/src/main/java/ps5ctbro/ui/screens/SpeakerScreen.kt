@@ -169,21 +169,21 @@ private fun ChannelRoutesCard(
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "CH2",
+            title = "Hangszóró",
             checked = routeCh2,
             onCheckedChange = onRouteCh2Changed
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "CH3",
+            title = "Bal rezgőmotor",
             checked = routeCh3,
             onCheckedChange = onRouteCh3Changed
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "CH4",
+            title = "Jobb rezgőmotor",
             checked = routeCh4,
             onCheckedChange = onRouteCh4Changed
         )

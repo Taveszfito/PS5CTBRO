@@ -17,6 +17,7 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.TriggerSide
 import com.DueBoysenberry1226.ps5ctbro.service.MediaProjectionForegroundService
 import com.DueBoysenberry1226.ps5ctbro.ui.AppRoot
 import com.DueBoysenberry1226.ps5ctbro.ui.adaptive.AdaptiveTriggersViewModel
+import com.DueBoysenberry1226.ps5ctbro.ui.led.LedViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PS5CTBroTheme
 
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: SpeakerViewModel by viewModels()
     private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
+    private val ledViewModel: LedViewModel by viewModels()
 
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -52,32 +54,48 @@ class MainActivity : ComponentActivity() {
             PS5CTBroTheme {
                 val speakerUiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
+                val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
 
                 AppRoot(
                     speakerUiState = speakerUiState,
                     adaptiveTriggersUiState = adaptiveTriggersUiState,
+                    ledUiState = ledUiState,
                     onStartStreamClick = ::handleStartStreamClick,
                     onStopStreamClick = viewModel::stopStreaming,
                     onApplySpeakerRouteClick = viewModel::applySpeakerRoute,
                     onVolumeStepChanged = viewModel::setVolumeStep,
-                    onRouteCh1Changed = { viewModel.setChannelEnabled(channel = 1, enabled = it) },
-                    onRouteCh2Changed = { viewModel.setChannelEnabled(channel = 2, enabled = it) },
-                    onRouteCh3Changed = { viewModel.setChannelEnabled(channel = 3, enabled = it) },
-                    onRouteCh4Changed = { viewModel.setChannelEnabled(channel = 4, enabled = it) },
+                    onRouteCh1Changed = { enabled ->
+                        viewModel.setChannelEnabled(channel = 1, enabled = enabled)
+                    },
+                    onRouteCh2Changed = { enabled ->
+                        viewModel.setChannelEnabled(channel = 2, enabled = enabled)
+                    },
+                    onRouteCh3Changed = { enabled ->
+                        viewModel.setChannelEnabled(channel = 3, enabled = enabled)
+                    },
+                    onRouteCh4Changed = { enabled ->
+                        viewModel.setChannelEnabled(channel = 4, enabled = enabled)
+                    },
                     onMutePhoneWhileStreamingChanged = viewModel::setMutePhoneWhileStreaming,
                     onHardwareVolumeButtonsControlControllerChanged =
                         viewModel::setHardwareVolumeButtonsControlController,
-                    onLeftTriggerChanged = {
-                        adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.LEFT, it)
+                    onLeftTriggerChanged = { config ->
+                        adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.LEFT, config)
                     },
-                    onRightTriggerChanged = {
-                        adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.RIGHT, it)
+                    onRightTriggerChanged = { config ->
+                        adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.RIGHT, config)
                     },
                     onAdaptiveTriggersScreenVisible = adaptiveTriggersViewModel::onScreenVisible,
                     onAdaptiveTriggersScreenHidden = adaptiveTriggersViewModel::onScreenHidden,
                     onApplyTriggersClick = adaptiveTriggersViewModel::applyCurrentState,
                     onRefreshTriggerConnectionClick = adaptiveTriggersViewModel::refreshConnection,
-                    onResetTriggersClick = adaptiveTriggersViewModel::resetTriggers
+                    onResetTriggersClick = adaptiveTriggersViewModel::resetTriggers,
+                    onLedConfigChanged = ledViewModel::updateConfig,
+                    onLedScreenVisible = ledViewModel::onScreenVisible,
+                    onLedScreenHidden = ledViewModel::onScreenHidden,
+                    onApplyLedClick = ledViewModel::applyCurrentState,
+                    onRefreshLedConnectionClick = ledViewModel::refreshConnection,
+                    onResetLedClick = ledViewModel::resetToDefault
                 )
             }
         }

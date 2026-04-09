@@ -1,13 +1,29 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -42,7 +58,7 @@ fun AppTopBar(
 fun AppDrawerContent(
     currentSection: AppSection,
     onSectionSelected: (AppSection) -> Unit,
-    onCloseClick: () -> Unit   // ✅ ÚJ
+    onCloseClick: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val drawerWidth = configuration.screenWidthDp.dp * 0.75f
@@ -55,14 +71,7 @@ fun AppDrawerContent(
             modifier = Modifier
                 .fillMaxHeight()
                 .verticalScroll(scrollState)
-                .padding(
-                    bottom = WindowInsets.navigationBars
-                        .asPaddingValues()
-                        .calculateBottomPadding()
-                )
         ) {
-
-            // ✅ Drawer HEADER (hamburger + cím)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -76,8 +85,6 @@ fun AppDrawerContent(
                         contentDescription = "Close"
                     )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
                     text = currentSection.title,
@@ -96,6 +103,12 @@ fun AppDrawerContent(
                 title = AppSection.ADAPTIVE_TRIGGERS.title,
                 selected = currentSection == AppSection.ADAPTIVE_TRIGGERS,
                 onClick = { onSectionSelected(AppSection.ADAPTIVE_TRIGGERS) }
+            )
+
+            DrawerMenuItem(
+                title = AppSection.LEDS.title,
+                selected = currentSection == AppSection.LEDS,
+                onClick = { onSectionSelected(AppSection.LEDS) }
             )
 
             DrawerMenuItem(
@@ -120,38 +133,39 @@ private fun DrawerMenuItem(
     onClick: () -> Unit
 ) {
     val containerColor = if (selected) {
-        MaterialTheme.colorScheme.secondaryContainer
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
     } else {
         MaterialTheme.colorScheme.surface
     }
 
-    val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
     Surface(
         onClick = onClick,
-        color = containerColor,
-        contentColor = contentColor,
-        tonalElevation = if (selected) 2.dp else 0.dp,
-        shape = RoundedCornerShape(0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        color = containerColor,
+        shape = RoundedCornerShape(16.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(containerColor)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 20.dp)
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
             )
         }
     }
+
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 12.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+    )
 }
