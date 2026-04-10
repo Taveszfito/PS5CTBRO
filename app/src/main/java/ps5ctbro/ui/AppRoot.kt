@@ -23,9 +23,11 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppDrawerContent
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppTopBar
+import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.PlaceholderScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
@@ -37,6 +39,7 @@ fun AppRoot(
     speakerUiState: AudioUiState,
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
     ledUiState: LedUiState,
+    inputTestUiState: InputTestUiState,
     onStartStreamClick: () -> Unit,
     onStopStreamClick: () -> Unit,
     onApplySpeakerRouteClick: () -> Unit,
@@ -59,7 +62,10 @@ fun AppRoot(
     onLedScreenHidden: () -> Unit,
     onApplyLedClick: () -> Unit,
     onRefreshLedConnectionClick: () -> Unit,
-    onResetLedClick: () -> Unit
+    onResetLedClick: () -> Unit,
+    onInputTestScreenVisible: () -> Unit,
+    onInputTestScreenHidden: () -> Unit,
+    onRefreshInputTestConnectionClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -70,6 +76,7 @@ fun AppRoot(
 
     val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
     val ledScreenVisible = currentSection == AppSection.LEDS
+    val inputTestScreenVisible = currentSection == AppSection.INPUT_TEST
 
     DisposableEffect(adaptiveScreenVisible) {
         if (adaptiveScreenVisible) {
@@ -95,6 +102,20 @@ fun AppRoot(
         onDispose {
             if (ledScreenVisible) {
                 onLedScreenHidden()
+            }
+        }
+    }
+
+    DisposableEffect(inputTestScreenVisible) {
+        if (inputTestScreenVisible) {
+            onInputTestScreenVisible()
+        } else {
+            onInputTestScreenHidden()
+        }
+
+        onDispose {
+            if (inputTestScreenVisible) {
+                onInputTestScreenHidden()
             }
         }
     }
@@ -175,6 +196,13 @@ fun AppRoot(
                                 onApplyClick = onApplyLedClick,
                                 onRefreshConnectionClick = onRefreshLedConnectionClick,
                                 onResetClick = onResetLedClick
+                            )
+                        }
+
+                        AppSection.INPUT_TEST -> {
+                            InputTestScreen(
+                                uiState = inputTestUiState,
+                                onRefreshConnectionClick = onRefreshInputTestConnectionClick
                             )
                         }
 

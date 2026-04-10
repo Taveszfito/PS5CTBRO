@@ -110,6 +110,11 @@ fun AppDrawerContent(
                 selected = currentSection == AppSection.LEDS,
                 onClick = { onSectionSelected(AppSection.LEDS) }
             )
+            DrawerMenuItem(
+                title = AppSection.INPUT_TEST.title,
+                selected = currentSection == AppSection.INPUT_TEST,
+                onClick = { onSectionSelected(AppSection.INPUT_TEST) }
+            )
 
             DrawerMenuItem(
                 title = AppSection.SETTINGS.title,

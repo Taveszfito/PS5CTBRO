@@ -4,6 +4,7 @@ enum class AppSection(val title: String) {
     SPEAKER("Hangszóró"),
     ADAPTIVE_TRIGGERS("Adaptive Triggerek"),
     LEDS("LED vezérlés"),
+    INPUT_TEST("Input Test"),
     SETTINGS("Beállítások"),
     DEBUG("Debug")
 }

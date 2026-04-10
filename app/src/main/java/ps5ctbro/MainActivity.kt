@@ -17,6 +17,7 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.TriggerSide
 import com.DueBoysenberry1226.ps5ctbro.service.MediaProjectionForegroundService
 import com.DueBoysenberry1226.ps5ctbro.ui.AppRoot
 import com.DueBoysenberry1226.ps5ctbro.ui.adaptive.AdaptiveTriggersViewModel
+import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PS5CTBroTheme
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: SpeakerViewModel by viewModels()
     private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
     private val ledViewModel: LedViewModel by viewModels()
+    private val inputTestViewModel: InputTestViewModel by viewModels()
 
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -55,11 +57,13 @@ class MainActivity : ComponentActivity() {
                 val speakerUiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
                 val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
+                val inputTestUiState by inputTestViewModel.uiState.collectAsStateWithLifecycle()
 
                 AppRoot(
                     speakerUiState = speakerUiState,
                     adaptiveTriggersUiState = adaptiveTriggersUiState,
                     ledUiState = ledUiState,
+                    inputTestUiState = inputTestUiState,
                     onStartStreamClick = ::handleStartStreamClick,
                     onStopStreamClick = viewModel::stopStreaming,
                     onApplySpeakerRouteClick = viewModel::applySpeakerRoute,
@@ -95,7 +99,10 @@ class MainActivity : ComponentActivity() {
                     onLedScreenHidden = ledViewModel::onScreenHidden,
                     onApplyLedClick = ledViewModel::applyCurrentState,
                     onRefreshLedConnectionClick = ledViewModel::refreshConnection,
-                    onResetLedClick = ledViewModel::resetToDefault
+                    onResetLedClick = ledViewModel::resetToDefault,
+                    onInputTestScreenVisible = inputTestViewModel::onScreenVisible,
+                    onInputTestScreenHidden = inputTestViewModel::onScreenHidden,
+                    onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection
                 )
             }
         }
