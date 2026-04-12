@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.audio
 
+import android.content.Context
 import android.content.Intent
 import kotlinx.coroutines.flow.StateFlow
 
@@ -8,7 +9,7 @@ interface AudioController {
 
     fun createScreenCaptureIntent(): Intent
     suspend fun applySpeakerRoute()
-    suspend fun startSystemAudioStreaming(resultCode: Int, data: Intent)
+    suspend fun startSystemAudioStreaming(context: Context, resultCode: Int, data: Intent)
     fun stopSystemAudioStreaming()
     fun onCapturePermissionDenied()
     fun onRecordAudioPermissionDenied()

@@ -32,16 +32,24 @@ class MainActivity : ComponentActivity() {
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                launchCapturePermission()
+                checkNotificationPermission()
             } else {
                 viewModel.onRecordAudioPermissionDenied()
             }
         }
 
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            // Akár megadta, akár nem, megpróbáljuk indítani a capture-t. 
+            // Android 13+ esetén a notification nem jelenik meg ha nincs megadva, 
+            // de a service elindulhat (bár a foreground service-eknél kritikus lehet).
+            launchCapturePermission()
+        }
+
     private val capturePermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK && result.data != null) {
-                viewModel.onCapturePermissionGranted(result.resultCode, result.data!!)
+                startStreamingInService(result.resultCode, result.data!!)
             } else {
                 stopService(Intent(this, MediaProjectionForegroundService::class.java))
                 viewModel.onCapturePermissionDenied()
@@ -65,7 +73,7 @@ class MainActivity : ComponentActivity() {
                     ledUiState = ledUiState,
                     inputTestUiState = inputTestUiState,
                     onStartStreamClick = ::handleStartStreamClick,
-                    onStopStreamClick = viewModel::stopStreaming,
+                    onStopStreamClick = ::handleStopStreamClick,
                     onApplySpeakerRouteClick = viewModel::applySpeakerRoute,
                     onVolumeStepChanged = viewModel::setVolumeStep,
                     onRouteCh1Changed = { enabled ->
@@ -138,10 +146,26 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        checkNotificationPermission()
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!hasPermission) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+        }
         launchCapturePermission()
     }
 
     private fun launchCapturePermission() {
+        // Először elindítjuk a service-t üresen, hogy mire a permission megjön, már legyen foreground context
         startMediaProjectionService()
         capturePermissionLauncher.launch(viewModel.createScreenCaptureIntent())
     }
@@ -153,5 +177,22 @@ class MainActivity : ComponentActivity() {
         } else {
             startService(serviceIntent)
         }
+    }
+
+    private fun startStreamingInService(resultCode: Int, data: Intent) {
+        val serviceIntent = Intent(this, MediaProjectionForegroundService::class.java).apply {
+            action = MediaProjectionForegroundService.ACTION_START
+            putExtra(MediaProjectionForegroundService.EXTRA_RESULT_CODE, resultCode)
+            putExtra(MediaProjectionForegroundService.EXTRA_DATA, data)
+        }
+        startService(serviceIntent)
+    }
+
+    private fun handleStopStreamClick() {
+        val serviceIntent = Intent(this, MediaProjectionForegroundService::class.java).apply {
+            action = MediaProjectionForegroundService.ACTION_STOP
+        }
+        startService(serviceIntent)
+        viewModel.stopStreaming()
     }
 }

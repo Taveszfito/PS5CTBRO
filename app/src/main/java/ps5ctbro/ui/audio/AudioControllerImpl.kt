@@ -22,6 +22,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Process
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,11 +35,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class AudioControllerImpl(
+class AudioControllerImpl private constructor(
     context: Context
 ) : AudioController {
 
     companion object {
+        private const val TAG = "AudioControllerImpl"
+
+        @Volatile
+        private var INSTANCE: AudioControllerImpl? = null
+
+        fun getInstance(context: Context): AudioControllerImpl {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: AudioControllerImpl(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+
         private const val ACTION_USB_PERMISSION =
             "com.DueBoysenberry1226.ps5ctbro.USB_PERMISSION"
 
@@ -57,24 +69,19 @@ class AudioControllerImpl(
 
         private const val OUTPUT_FRAME_BYTES = OUTPUT_CHANNELS * BYTES_PER_SAMPLE
 
-        private const val VOLUME_DIRECTION_DOWN = -1
-        private const val VOLUME_DIRECTION_UP = 1
-
         private val CONTROLLER_VOLUME_STEPS = intArrayOf(
-            0x24, 0x30, 0x3C, 0x48, 0x54,
-            0x60, 0x6C, 0x78, 0x7F, 0x7F
+            0x45, 0x4F, 0x59, 0x63, 0x6D,
+            0x77, 0x81, 0x8B, 0x95, 0x9F
         )
 
         private val PCM_GAIN_STEPS = floatArrayOf(
-            1.0f, 1.2f, 1.4f, 1.6f, 1.8f,
-            2.0f, 2.2f, 2.4f, 2.6f, 2.8f
+            0.2f, 0.4f, 0.6f, 0.8f, 1.0f,
+            1.2f, 1.4f, 1.6f, 1.8f, 2.0f
         )
     }
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
-    private val projectionManager =
-        appContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -129,7 +136,8 @@ class AudioControllerImpl(
     }
 
     override fun createScreenCaptureIntent(): Intent {
-        return projectionManager.createScreenCaptureIntent()
+        val pm = appContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        return pm.createScreenCaptureIntent()
     }
 
     override suspend fun applySpeakerRoute() {
@@ -137,9 +145,9 @@ class AudioControllerImpl(
         setLog(text)
     }
 
-    override suspend fun startSystemAudioStreaming(resultCode: Int, data: Intent) {
+    override suspend fun startSystemAudioStreaming(context: Context, resultCode: Int, data: Intent) {
         val text = withContext(Dispatchers.IO) {
-            startStreamingInternal(resultCode, data)
+            startStreamingInternal(context, resultCode, data)
         }
         setLog(text)
     }
@@ -228,10 +236,9 @@ class AudioControllerImpl(
         stopPhoneMuteForStreaming()
         closeController()
         unregisterUsbReceiver()
-        scope.cancel()
     }
 
-    private fun startStreamingInternal(resultCode: Int, data: Intent): String {
+    private fun startStreamingInternal(context: Context, resultCode: Int, data: Intent): String {
         stopStreamingInternal(stopNative = true)
 
         val device = findDualSenseDevice() ?: return "Nem találok USB-s DualSense kontrollert."
@@ -285,9 +292,11 @@ class AudioControllerImpl(
             return "nativeIsoStreamStart hiba, rc=$startRc"
         }
 
+        val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val projection = try {
             projectionManager.getMediaProjection(resultCode, data)
         } catch (t: Throwable) {
+            Log.e(TAG, "MediaProjection error", t)
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
             return "MediaProjection hiba: ${t.message}"
@@ -297,9 +306,21 @@ class AudioControllerImpl(
             return "MediaProjection létrehozása sikertelen."
         }
 
+        // Add callback to detect when it stops
+        projection.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                Log.w(TAG, "MediaProjection STOPPED!")
+                scope.launch {
+                    stopStreamingInternal()
+                    setLog("Stream megszakadt (Rendszer leállította)")
+                }
+            }
+        }, null)
+
         val record = try {
             createPlaybackCaptureRecord(projection)
         } catch (t: Throwable) {
+            Log.e(TAG, "AudioRecord creation error", t)
             projection.stop()
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
@@ -313,6 +334,9 @@ class AudioControllerImpl(
 
         return try {
             record.startRecording()
+            if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                throw IllegalStateException("AudioRecord nem indult el (State: ${record.recordingState})")
+            }
 
             mediaProjection = projection
             audioRecord = record
@@ -332,22 +356,11 @@ class AudioControllerImpl(
                 schedulePhoneMuteForStreaming()
             }
 
-            buildString {
-                appendLine("SYSTEM AUDIO STREAM STARTED - ÚJ STABIL MÓD")
-                appendLine("64 packet/URB (~512 ms)")
-                appendLine("Max 32 chunk queue")
-                appendLine("=== SPK HID ===")
-                append(hidLogs)
-            }
+            "STREAM STARTED"
         } catch (t: Throwable) {
-            try {
-                record.release()
-            } catch (_: Throwable) {
-            }
-            try {
-                projection.stop()
-            } catch (_: Throwable) {
-            }
+            Log.e(TAG, "Streaming start failed", t)
+            try { record.release() } catch (_: Throwable) {}
+            try { projection.stop() } catch (_: Throwable) {}
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
             stopPhoneMuteForStreaming()
@@ -369,12 +382,21 @@ class AudioControllerImpl(
             val inputShorts = ShortArray(inputShortsPerChunk)
             val outputBytes = ByteArray(chunkBytes)
 
-            while (captureJob?.isActive == true) {
-                val read = readExactly(record, inputShorts, inputShortsPerChunk)
-                if (read <= 0) break
+            try {
+                while (captureJob?.isActive == true) {
+                    val read = readExactly(record, inputShorts, inputShortsPerChunk)
+                    if (read <= 0) {
+                        Log.e(TAG, "AudioRecord read error: $read")
+                        break
+                    }
 
-                stereoToQuadMono(inputShorts, outputBytes, framesPerChunk)
-                NativeAudioBridge.nativeIsoPushPcm(outputBytes)
+                    stereoToQuadMono(inputShorts, outputBytes, framesPerChunk)
+                    NativeAudioBridge.nativeIsoPushPcm(outputBytes)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Pipeline error", e)
+            } finally {
+                Log.i(TAG, "Streaming pipeline stopped")
             }
         }
     }
@@ -499,46 +521,31 @@ class AudioControllerImpl(
     private fun createPlaybackCaptureRecord(projection: MediaProjection): AudioRecord? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
 
-        val recordPermissionGranted =
-            ContextCompat.checkSelfPermission(
-                appContext,
-                android.Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
+        val captureConfig = AudioPlaybackCaptureConfiguration.Builder(projection)
+            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+            .addMatchingUsage(AudioAttributes.USAGE_GAME)
+            .build()
 
-        if (!recordPermissionGranted) {
-            return null
-        }
+        val format = AudioFormat.Builder()
+            .setSampleRate(SAMPLE_RATE)
+            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+            .build()
 
-        return try {
-            val captureConfig = AudioPlaybackCaptureConfiguration.Builder(projection)
-                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                .build()
+        val minBufferBytes = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
 
-            val format = AudioFormat.Builder()
-                .setSampleRate(SAMPLE_RATE)
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
-                .build()
+        // Using a slightly smaller buffer for background stability
+        val desiredBufferBytes = maxOf(minBufferBytes, 32 * 1024)
 
-            val minBufferBytes = AudioRecord.getMinBufferSize(
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_STEREO,
-                AudioFormat.ENCODING_PCM_16BIT
-            )
-
-            val desiredBufferBytes = maxOf(minBufferBytes, 384 * 48 * 12)
-
-            AudioRecord.Builder()
-                .setAudioPlaybackCaptureConfig(captureConfig)
-                .setAudioFormat(format)
-                .setBufferSizeInBytes(desiredBufferBytes)
-                .build()
-        } catch (_: SecurityException) {
-            null
-        } catch (_: Throwable) {
-            null
-        }
+        return AudioRecord.Builder()
+            .setAudioPlaybackCaptureConfig(captureConfig)
+            .setAudioFormat(format)
+            .setBufferSizeInBytes(desiredBufferBytes)
+            .build()
     }
 
     private fun runSpeakerHid(): String {

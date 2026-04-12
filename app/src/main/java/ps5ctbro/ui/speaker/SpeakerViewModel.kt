@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 
 class SpeakerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val controller: AudioController = AudioControllerImpl(application)
+    private val controller: AudioController = AudioControllerImpl.getInstance(application)
 
     val uiState: StateFlow<AudioUiState> = controller.uiState
 
@@ -28,7 +28,7 @@ class SpeakerViewModel(application: Application) : AndroidViewModel(application)
 
     fun onCapturePermissionGranted(resultCode: Int, data: Intent) {
         viewModelScope.launch {
-            controller.startSystemAudioStreaming(resultCode, data)
+            controller.startSystemAudioStreaming(getApplication(), resultCode, data)
         }
     }
 
@@ -70,6 +70,5 @@ class SpeakerViewModel(application: Application) : AndroidViewModel(application)
 
     override fun onCleared() {
         super.onCleared()
-        controller.release()
     }
 }

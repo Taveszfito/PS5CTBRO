@@ -103,7 +103,21 @@ private fun StatusCard(
     isStreaming: Boolean,
     volumeStep: Int
 ) {
-    SectionCard(title = "Állapot") {
+    var showStatusInfoDialog by remember { mutableStateOf(false) }
+
+    SectionCard(
+        title = "Állapot",
+        titleTrailing = {
+            IconButton(
+                onClick = { showStatusInfoDialog = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Infó"
+                )
+            }
+        }
+    ) {
         StatusRow(
             label = "Kontroller",
             value = if (controllerConnected) "Csatlakoztatva" else "Nincs csatlakoztatva"
@@ -117,6 +131,29 @@ private fun StatusCard(
         StatusRow(
             label = "Hangerő",
             value = "${volumeStep + 1}/10"
+        )
+    }
+
+    if (showStatusInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showStatusInfoDialog = false },
+            title = {
+                Text("Állapot információ")
+            },
+            text = {
+                Text("Ha a stream nem indul el, ellenőrizd, hogy minden szükséges engedély meg van adva az alkalmazásnak, és az akkumulátor-kezelés nem korlátozza a háttérben futását.\n" +
+                        "\n" +
+                        "A streamet teljes képernyős (full screen) módban indítsd, ne egyetlen alkalmazás rögzítésével.\n" +
+                        "\n" +
+                        "Ha továbbra sincs hang, csatlakoztasd újra a kontrollert, majd indítás előtt nyomd meg a „Speaker Route alkalmazása” gombot, és próbáld újra. ")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showStatusInfoDialog = false }
+                ) {
+                    Text("OK")
+                }
+            }
         )
     }
 }
