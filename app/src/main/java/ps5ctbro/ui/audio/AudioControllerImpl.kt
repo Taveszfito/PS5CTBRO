@@ -74,11 +74,6 @@ class AudioControllerImpl private constructor(
             0x45, 0x4F, 0x59, 0x63, 0x6D,
             0x77, 0x81, 0x8B, 0x95, 0x9F
         )
-
-        private val PCM_GAIN_STEPS = floatArrayOf(
-            0.2f, 0.4f, 0.6f, 0.8f, 1.0f,
-            1.2f, 1.4f, 1.6f, 1.8f, 2.0f
-        )
     }
 
     private val appContext = context.applicationContext
@@ -185,6 +180,10 @@ class AudioControllerImpl private constructor(
         scope.launch(Dispatchers.IO) {
             runSpeakerHid()
         }
+    }
+
+    override fun setAudioGain(gain: Float) {
+        _uiState.update { it.copy(audioGain = gain.coerceIn(0f, 1.5f)) }
     }
 
     override fun setChannelEnabled(channel: Int, enabled: Boolean) {
@@ -376,7 +375,8 @@ class AudioControllerImpl private constructor(
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
 
             val payloadSize = 384
-            val chunkBytes = payloadSize * 48
+            val packetsPerUrb = 32 // Megemeltük 12-ről a stabilitásért
+            val chunkBytes = payloadSize * packetsPerUrb
             val framesPerChunk = chunkBytes / OUTPUT_FRAME_BYTES
             val inputShortsPerChunk = framesPerChunk * INPUT_CHANNELS
 
@@ -461,7 +461,7 @@ class AudioControllerImpl private constructor(
         var inputIndex = 0
         var outputIndex = 0
 
-        val gain = currentPcmGain()
+        val gain = _uiState.value.audioGain
 
         val state = _uiState.value
         val ch1Enabled = state.routeCh1
@@ -492,11 +492,6 @@ class AudioControllerImpl private constructor(
     private fun writeShortLe(buffer: ByteArray, offset: Int, value: Short) {
         buffer[offset] = (value.toInt() and 0xFF).toByte()
         buffer[offset + 1] = ((value.toInt() shr 8) and 0xFF).toByte()
-    }
-
-    private fun currentPcmGain(): Float {
-        val step = _uiState.value.volumeStep.coerceIn(0, PCM_GAIN_STEPS.lastIndex)
-        return PCM_GAIN_STEPS[step]
     }
 
     private fun currentControllerVolume(): Int {
@@ -539,8 +534,8 @@ class AudioControllerImpl private constructor(
             AudioFormat.ENCODING_PCM_16BIT
         )
 
-        // Using a slightly smaller buffer for background stability
-        val desiredBufferBytes = maxOf(minBufferBytes, 32 * 1024)
+        // Using a larger buffer for streaming stability
+        val desiredBufferBytes = maxOf(minBufferBytes, 64 * 1024)
 
         return AudioRecord.Builder()
             .setAudioPlaybackCaptureConfig(captureConfig)
@@ -577,9 +572,9 @@ class AudioControllerImpl private constructor(
         setControllerConnected(connected)
 
         return if (connected) {
-            "SPK HID OK | vol=0x${controllerVolume.toString(16)}"
+            appContext.getString(R.string.log_spk_hid_ok, controllerVolume.toString(16))
         } else {
-            "SPK HID fail"
+            appContext.getString(R.string.log_spk_hid_fail)
         }
     }
 

@@ -112,7 +112,8 @@ class MainActivity : AppCompatActivity() {
                     onInputTestScreenVisible = inputTestViewModel::onScreenVisible,
                     onInputTestScreenHidden = inputTestViewModel::onScreenHidden,
                     onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection,
-                    onLanguageSelected = settingsViewModel::setLanguage
+                    onLanguageSelected = settingsViewModel::setLanguage,
+                    onGainChanged = settingsViewModel::setAudioGain
                 )
             }
         }

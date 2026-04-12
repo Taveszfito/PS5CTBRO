@@ -15,8 +15,8 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,7 +29,8 @@ import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
-    onLanguageSelected: (String) -> Unit
+    onLanguageSelected: (String) -> Unit,
+    onGainChanged: (Float) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -41,6 +42,11 @@ fun SettingsScreen(
         LanguageCard(
             currentLanguage = uiState.currentLanguage,
             onLanguageSelected = onLanguageSelected
+        )
+
+        GainCard(
+            currentGain = uiState.audioGain,
+            onGainChanged = onGainChanged
         )
 
         AboutCard(
@@ -71,6 +77,42 @@ private fun LanguageCard(
                 onClick = { onLanguageSelected("hu") },
                 label = { Text(stringResource(R.string.label_language_hungarian)) },
                 modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GainCard(
+    currentGain: Float,
+    onGainChanged: (Float) -> Unit
+) {
+    SettingsSectionCard(title = stringResource(R.string.card_title_audio_gain)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.gain_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.label_gain_value, currentGain),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Slider(
+                value = currentGain,
+                onValueChange = onGainChanged,
+                valueRange = 0f..1.5f,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

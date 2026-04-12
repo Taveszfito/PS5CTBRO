@@ -18,8 +18,8 @@ static bool g_streamRunning = false;
 static pthread_t g_streamThread = 0;
 
 static constexpr int PAYLOAD_SIZE = 384;
-static constexpr int PACKETS_PER_URB = 48;
-static constexpr int NUM_URBS = 6;
+static constexpr int PACKETS_PER_URB = 32; // A stabilitás és az alacsony késleltetés egyensúlya
+static constexpr int NUM_URBS = 8;        // Megemeltük a puffert, hogy ne szakadjon meg a folyamat
 
 struct PendingUrbContext {
     usbdevfs_urb* urb = nullptr;
@@ -102,7 +102,7 @@ static void* streamThreadFunction(void* /*arg*/) {
         }
 
         if (!ctx) {
-            usleep(800);
+            usleep(100); // Gyorsabb ciklus
             continue;
         }
 
@@ -127,7 +127,7 @@ static void* streamThreadFunction(void* /*arg*/) {
 
         if (ioctl(fd, USBDEVFS_SUBMITURB, ctx->urb) < 0) {
             ctx->inUse = false;
-            usleep(1500);
+            usleep(1000);
         }
     }
 
@@ -192,7 +192,8 @@ Java_com_DueBoysenberry1226_ps5ctbro_audio_NativeAudioBridge_nativeIsoPushPcm(
 
     {
         std::lock_guard<std::mutex> lock(g_pcmMutex);
-        if (g_pcmQueue.size() < 24) {
+        // Megnöveltük 20-ra, hogy legyen tartalék a laggolás ellen
+        if (g_pcmQueue.size() < 20) {
             g_pcmQueue.push_back(std::move(chunk));
         } else {
             g_pcmQueue.pop_front();

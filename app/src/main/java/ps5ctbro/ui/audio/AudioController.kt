@@ -15,6 +15,7 @@ interface AudioController {
     fun onRecordAudioPermissionDenied()
     fun onUnsupportedAndroidVersion()
     fun setVolumeStep(step: Int)
+    fun setAudioGain(gain: Float)
     fun setChannelEnabled(channel: Int, enabled: Boolean)
 
     fun setMutePhoneWhileStreaming(enabled: Boolean)

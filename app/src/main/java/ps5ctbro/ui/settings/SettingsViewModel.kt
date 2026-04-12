@@ -4,21 +4,37 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.DueBoysenberry1226.ps5ctbro.audio.AudioController
+import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import java.util.Locale
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val audioController: AudioController = AudioControllerImpl.getInstance(application)
+
     private val _uiState = MutableStateFlow(
         SettingsUiState(
             currentLanguage = getCurrentLanguageCode(),
-            appVersion = getVersionName()
+            appVersion = getVersionName(),
+            audioGain = audioController.uiState.value.audioGain
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    init {
+        audioController.uiState
+            .onEach { audioState ->
+                _uiState.update { it.copy(audioGain = audioState.audioGain) }
+            }
+            .launchIn(viewModelScope)
+    }
 
     private fun getCurrentLanguageCode(): String {
         val locales = AppCompatDelegate.getApplicationLocales()
@@ -46,5 +62,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         
         // Frissítjük a lokális állapotot, hogy a gombokon látszódjon a kijelölés
         _uiState.update { it.copy(currentLanguage = languageCode) }
+    }
+
+    fun setAudioGain(gain: Float) {
+        audioController.setAudioGain(gain)
     }
 }

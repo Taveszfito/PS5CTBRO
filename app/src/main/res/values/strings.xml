@@ -177,4 +177,8 @@
     <string name="label_language_hungarian">Hungarian</string>
     <string name="card_title_about">About</string>
     <string name="label_version">Version</string>
+
+    <string name="card_title_audio_gain">Audio Gain</string>
+    <string name="label_gain_value">Gain: %1$.2f</string>
+    <string name="gain_description">Adjust the digital amplification for the system audio streaming.</string>
 </resources>

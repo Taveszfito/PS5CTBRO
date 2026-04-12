@@ -5,6 +5,7 @@ data class AudioUiState(
     val isStreaming: Boolean = false,
     val controllerConnected: Boolean = false,
     val volumeStep: Int = 6,
+    val audioGain: Float = 1.0f,
     val routeCh1: Boolean = false,
     val routeCh2: Boolean = true,
     val routeCh3: Boolean = false,

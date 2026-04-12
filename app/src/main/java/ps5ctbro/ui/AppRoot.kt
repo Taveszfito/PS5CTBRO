@@ -71,7 +71,8 @@ fun AppRoot(
     onInputTestScreenVisible: () -> Unit,
     onInputTestScreenHidden: () -> Unit,
     onRefreshInputTestConnectionClick: () -> Unit,
-    onLanguageSelected: (String) -> Unit
+    onLanguageSelected: (String) -> Unit,
+    onGainChanged: (Float) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -215,7 +216,8 @@ fun AppRoot(
                         AppSection.SETTINGS -> {
                             SettingsScreen(
                                 uiState = settingsUiState,
-                                onLanguageSelected = onLanguageSelected
+                                onLanguageSelected = onLanguageSelected,
+                                onGainChanged = onGainChanged
                             )
                         }
 
