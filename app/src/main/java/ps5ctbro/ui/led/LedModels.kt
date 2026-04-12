@@ -1,21 +1,23 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.led
 
+import androidx.annotation.StringRes
+import com.DueBoysenberry1226.ps5ctbro.R
 import kotlinx.coroutines.flow.StateFlow
 
-enum class LedEffect(val title: String) {
-    OFF("Ki"),
-    STATIC("Statikus"),
-    BREATH("Breath"),
-    COLOR_CYCLE("Color Cycle")
+enum class LedEffect(@StringRes val titleRes: Int) {
+    OFF(R.string.led_effect_off),
+    STATIC(R.string.led_effect_static),
+    BREATH(R.string.led_effect_breath),
+    COLOR_CYCLE(R.string.led_effect_color_cycle)
 }
 
 enum class PlayerLedBrightness(
-    val title: String,
+    @StringRes val titleRes: Int,
     val rawValue: Int
 ) {
-    LOW("Alacsony", 2),
-    MEDIUM("Közepes", 1),
-    HIGH("Magas", 0)
+    LOW(R.string.brightness_low, 2),
+    MEDIUM(R.string.brightness_medium, 1),
+    HIGH(R.string.brightness_high, 0)
 }
 
 data class LedColor(
@@ -37,7 +39,7 @@ data class LedConfig(
 data class LedUiState(
     val controllerConnected: Boolean = false,
     val config: LedConfig = LedConfig(),
-    val logText: String = "LED vezérlés készen áll."
+    val logText: String = "" // This should probably be localized in the ViewModel or just kept as is if it's dynamic
 )
 
 interface LedController {

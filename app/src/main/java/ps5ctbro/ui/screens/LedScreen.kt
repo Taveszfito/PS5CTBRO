@@ -33,7 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedColor
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedEffect
@@ -63,7 +65,7 @@ fun LedScreen(
     ) {
         LedStatusCard(
             controllerConnected = uiState.controllerConnected,
-            currentEffect = uiState.config.effect.title
+            currentEffectRes = uiState.config.effect.titleRes
         )
 
         LightbarCard(
@@ -94,19 +96,19 @@ fun LedScreen(
 @Composable
 private fun LedStatusCard(
     controllerConnected: Boolean,
-    currentEffect: String
+    currentEffectRes: Int
 ) {
-    SectionCard(title = "Állapot") {
+    SectionCard(title = stringResource(R.string.card_title_status)) {
         StatusRow(
-            label = "Kontroller",
-            value = if (controllerConnected) "Csatlakoztatva" else "Nincs csatlakoztatva"
+            label = stringResource(R.string.label_controller),
+            value = if (controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
 
         StatusRow(
-            label = "Aktív mód",
-            value = currentEffect
+            label = stringResource(R.string.label_active_mode),
+            value = stringResource(currentEffectRes)
         )
     }
 }
@@ -116,9 +118,9 @@ private fun LightbarCard(
     config: LedConfig,
     onConfigChanged: (LedConfig) -> Unit
 ) {
-    SectionCard(title = "Lightbar") {
+    SectionCard(title = stringResource(R.string.card_title_lightbar)) {
         Text(
-            text = "Effekt",
+            text = stringResource(R.string.label_effect),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -150,7 +152,7 @@ private fun LightbarCard(
         Spacer(modifier = Modifier.height(16.dp))
 
         SliderRow(
-            label = "Lightbar fényerő",
+            label = stringResource(R.string.label_lightbar_brightness),
             value = config.lightbarBrightnessPercent,
             valueText = "${config.lightbarBrightnessPercent}%",
             onValueChange = { newValue ->
@@ -163,7 +165,7 @@ private fun LightbarCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             SliderRow(
-                label = "Effekt sebesség",
+                label = stringResource(R.string.label_effect_speed),
                 value = config.animationSpeedPercent,
                 valueText = "${config.animationSpeedPercent}%",
                 onValueChange = { newValue ->
@@ -179,7 +181,7 @@ private fun LightbarCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             SliderRow(
-                label = "Piros",
+                label = stringResource(R.string.label_red),
                 value = config.color.red,
                 valueText = "${config.color.red}",
                 onValueChange = { newValue ->
@@ -191,7 +193,7 @@ private fun LightbarCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             SliderRow(
-                label = "Zöld",
+                label = stringResource(R.string.label_green),
                 value = config.color.green,
                 valueText = "${config.color.green}",
                 onValueChange = { newValue ->
@@ -203,7 +205,7 @@ private fun LightbarCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             SliderRow(
-                label = "Kék",
+                label = stringResource(R.string.label_blue),
                 value = config.color.blue,
                 valueText = "${config.color.blue}",
                 onValueChange = { newValue ->
@@ -228,9 +230,9 @@ private fun PlayerLedsCard(
     config: LedConfig,
     onConfigChanged: (LedConfig) -> Unit
 ) {
-    SectionCard(title = "Player LED-ek") {
+    SectionCard(title = stringResource(R.string.card_title_player_leds)) {
         Text(
-            text = "Az állítás azonnal kimegy. Néhány DualSense revízión az 1/5 és 2/4 LED hardveresen tükrözött.",
+            text = stringResource(R.string.player_leds_description),
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -266,7 +268,7 @@ private fun PlayerLedsCard(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Player LED fényerő",
+            text = stringResource(R.string.label_player_led_brightness),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -282,7 +284,7 @@ private fun PlayerLedsCard(
                     onClick = {
                         onConfigChanged(config.copy(playerLedBrightness = brightness))
                     },
-                    label = { Text(brightness.title) },
+                    label = { Text(stringResource(brightness.titleRes)) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -292,7 +294,7 @@ private fun PlayerLedsCard(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Mic LED",
+            text = stringResource(R.string.label_mic_led),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -307,7 +309,7 @@ private fun PlayerLedsCard(
                 onClick = {
                     onConfigChanged(config.copy(micLedEnabled = false))
                 },
-                label = { Text("Ki") },
+                label = { Text(stringResource(R.string.off)) },
                 modifier = Modifier.weight(1f)
             )
 
@@ -316,7 +318,7 @@ private fun PlayerLedsCard(
                 onClick = {
                     onConfigChanged(config.copy(micLedEnabled = true))
                 },
-                label = { Text("Be") },
+                label = { Text(stringResource(R.string.on)) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -328,9 +330,9 @@ private fun ActionsCard(
     onRefreshConnectionClick: () -> Unit,
     onResetClick: () -> Unit
 ) {
-    SectionCard(title = "Műveletek") {
+    SectionCard(title = stringResource(R.string.card_title_actions)) {
         Text(
-            text = "Amennyiben nem frissülne automatikusan a beállítás itt tudsz frissíteni, vagy vissza állítani mindent az alapértelmezett értékekre.",
+            text = stringResource(R.string.actions_description),
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -344,14 +346,14 @@ private fun ActionsCard(
                 onClick = onRefreshConnectionClick,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("FRISSÍTÉS")
+                Text(stringResource(R.string.button_refresh))
             }
 
             Button(
                 onClick = onResetClick,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("RESET")
+                Text(stringResource(R.string.button_reset))
             }
         }
     }
@@ -372,14 +374,14 @@ private fun EffectSelectorRow(
             FilterChip(
                 selected = selectedEffect == LedEffect.OFF,
                 onClick = { onEffectSelected(LedEffect.OFF) },
-                label = { Text("Ki") },
+                label = { Text(stringResource(LedEffect.OFF.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
 
             FilterChip(
                 selected = selectedEffect == LedEffect.STATIC,
                 onClick = { onEffectSelected(LedEffect.STATIC) },
-                label = { Text("Statikus") },
+                label = { Text(stringResource(LedEffect.STATIC.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -391,14 +393,14 @@ private fun EffectSelectorRow(
             FilterChip(
                 selected = selectedEffect == LedEffect.BREATH,
                 onClick = { onEffectSelected(LedEffect.BREATH) },
-                label = { Text("Breath") },
+                label = { Text(stringResource(LedEffect.BREATH.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
 
             FilterChip(
                 selected = selectedEffect == LedEffect.COLOR_CYCLE,
                 onClick = { onEffectSelected(LedEffect.COLOR_CYCLE) },
-                label = { Text("Color Cycle") },
+                label = { Text(stringResource(LedEffect.COLOR_CYCLE.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -416,18 +418,18 @@ private fun PresetColorRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PresetColorChip("Kék", LedColor(0, 114, 255), onColorPicked, Modifier.weight(1f))
-            PresetColorChip("Piros", LedColor(255, 40, 40), onColorPicked, Modifier.weight(1f))
-            PresetColorChip("Zöld", LedColor(40, 255, 120), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(stringResource(R.string.color_blue), LedColor(0, 114, 255), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(stringResource(R.string.color_red), LedColor(255, 40, 40), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(stringResource(R.string.color_green), LedColor(40, 255, 120), onColorPicked, Modifier.weight(1f))
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PresetColorChip("Lila", LedColor(180, 70, 255), onColorPicked, Modifier.weight(1f))
-            PresetColorChip("Fehér", LedColor(255, 255, 255), onColorPicked, Modifier.weight(1f))
-            PresetColorChip("Narancs", LedColor(255, 140, 0), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(stringResource(R.string.color_purple), LedColor(180, 70, 255), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(stringResource(R.string.color_white), LedColor(255, 255, 255), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(stringResource(R.string.color_orange), LedColor(255, 140, 0), onColorPicked, Modifier.weight(1f))
         }
     }
 }
@@ -456,7 +458,7 @@ private fun SliderRow(
     valueRange: IntRange
 ) {
     Text(
-        text = "$label: $valueText",
+        text = stringResource(R.string.label_slider_with_value, label, valueText),
         style = MaterialTheme.typography.bodyLarge
     )
 
@@ -473,7 +475,7 @@ private fun SliderRow(
 
 @Composable
 private fun LogCard(logText: String) {
-    SectionCard(title = "Log") {
+    SectionCard(title = stringResource(R.string.card_title_log)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surfaceVariant,

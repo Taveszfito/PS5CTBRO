@@ -23,7 +23,6 @@ class MediaProjectionForegroundService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "media_projection_channel"
-        private const val CHANNEL_NAME = "Media Projection"
         private const val NOTIFICATION_ID = 1001
 
         const val ACTION_START = "com.DueBoysenberry1226.ps5ctbro.START_STREAM"
@@ -35,14 +34,12 @@ class MediaProjectionForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        // Kezdésnek egy sima értesítés típus nélkül, hogy elkerüljük a crash-t onCreate-ben
-        startForeground(NOTIFICATION_ID, buildNotification("Streaming előkészítése..."))
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_text_preparing)))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                // Alapértelmezett érték 0 (RESULT_CANCELED), mert a RESULT_OK az -1
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
                 val data = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
@@ -52,8 +49,6 @@ class MediaProjectionForegroundService : Service() {
                 }
 
                 if (resultCode != 0 && data != null) {
-                    // Android 14+ esetén itt kell megadni a FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION-t,
-                    // MIUTÁN megvan az engedély.
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
@@ -63,13 +58,13 @@ class MediaProjectionForegroundService : Service() {
                         
                         startForeground(
                             NOTIFICATION_ID,
-                            buildNotification("A rendszerhang továbbítása aktív"),
+                            buildNotification(getString(R.string.notification_text_active)),
                             serviceType
                         )
                     } else {
                         startForeground(
                             NOTIFICATION_ID,
-                            buildNotification("A rendszerhang továbbítása aktív")
+                            buildNotification(getString(R.string.notification_text_active))
                         )
                     }
                     startStreaming(resultCode, data)
@@ -106,7 +101,7 @@ class MediaProjectionForegroundService : Service() {
     private fun buildNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("PS5CTBro")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -120,7 +115,7 @@ class MediaProjectionForegroundService : Service() {
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            CHANNEL_NAME,
+            getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_LOW
         )
 

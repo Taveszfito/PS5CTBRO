@@ -13,6 +13,7 @@ import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.DueBoysenberry1226.ps5ctbro.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -88,7 +89,7 @@ class AdaptiveTriggerControllerImpl(
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
 
             if (!granted || device == null) {
-                setConnectionState(connected = false, log = "USB engedély elutasítva.")
+                setConnectionState(connected = false, log = appContext.getString(R.string.log_usb_permission_denied))
                 return
             }
 
@@ -96,12 +97,12 @@ class AdaptiveTriggerControllerImpl(
             if (hidHandle != null) {
                 setConnectionState(
                     connected = true,
-                    log = "USB engedély megadva, trigger vezérlés kész."
+                    log = appContext.getString(R.string.log_trigger_control_ready)
                 )
             } else {
                 setConnectionState(
                     connected = false,
-                    log = "USB engedély megvan, de a kontroller megnyitása sikertelen."
+                    log = appContext.getString(R.string.log_usb_open_failed)
                 )
             }
         }
@@ -120,7 +121,7 @@ class AdaptiveTriggerControllerImpl(
         _uiState.update {
             it.copy(
                 controllerConnected = false,
-                logText = "Adaptive trigger képernyő elhagyva, HID kapcsolat elengedve."
+                logText = appContext.getString(R.string.log_adaptive_trigger_screen_left)
             )
         }
     }
@@ -137,7 +138,7 @@ class AdaptiveTriggerControllerImpl(
     override fun applyCurrentState() {
         val device = findDualSenseDevice()
         if (device == null) {
-            setConnectionState(connected = false, log = "Nem találok USB-s DualSense kontrollert.")
+            setConnectionState(connected = false, log = appContext.getString(R.string.log_no_usb_dualsense))
             closeHandle()
             return
         }
@@ -146,7 +147,7 @@ class AdaptiveTriggerControllerImpl(
             requestPermission(device)
             setConnectionState(
                 connected = false,
-                log = "USB engedély kérve. Engedélyezd, majd nyomd meg újra az Alkalmazást."
+                log = appContext.getString(R.string.log_usb_permission_retry)
             )
             return
         }
@@ -159,7 +160,7 @@ class AdaptiveTriggerControllerImpl(
         if (handle == null) {
             setConnectionState(
                 connected = false,
-                log = "A kontroller HID kapcsolata nem nyitható meg."
+                log = appContext.getString(R.string.log_hid_interface_not_found)
             )
             return
         }
@@ -183,7 +184,7 @@ class AdaptiveTriggerControllerImpl(
         }
 
         if (clearSent != clearReport.size) {
-            setConnectionState(false, "CLEAR report hiba: sent=$clearSent")
+            setConnectionState(false, "CLEAR report error: sent=$clearSent")
             closeHandle()
             return
         }
@@ -228,7 +229,7 @@ class AdaptiveTriggerControllerImpl(
         val device = findDualSenseDevice()
         if (device == null) {
             closeHandle()
-            setConnectionState(connected = false, log = "DualSense nincs csatlakoztatva USB-n.")
+            setConnectionState(connected = false, log = appContext.getString(R.string.log_dualsense_not_connected_usb))
             return
         }
 
@@ -236,7 +237,7 @@ class AdaptiveTriggerControllerImpl(
             requestPermission(device)
             setConnectionState(
                 connected = false,
-                log = "USB engedély szükséges a trigger vezérléshez."
+                log = appContext.getString(R.string.log_usb_permission_required)
             )
             return
         }
@@ -244,11 +245,11 @@ class AdaptiveTriggerControllerImpl(
         reopenHandle(device)
 
         if (hidHandle != null) {
-            setConnectionState(connected = true, log = "DualSense trigger kapcsolat aktív.")
+            setConnectionState(connected = true, log = appContext.getString(R.string.log_trigger_connection_active))
         } else {
             setConnectionState(
                 connected = false,
-                log = "A trigger HID interfész nem található vagy nem nyitható meg."
+                log = appContext.getString(R.string.log_trigger_hid_not_found)
             )
         }
     }
@@ -258,7 +259,7 @@ class AdaptiveTriggerControllerImpl(
             it.copy(
                 leftTrigger = AdaptiveTriggerConfig(effect = AdaptiveTriggerEffect.OFF),
                 rightTrigger = AdaptiveTriggerConfig(effect = AdaptiveTriggerEffect.OFF),
-                logText = "Trigger beállítások nullázva."
+                logText = appContext.getString(R.string.log_trigger_settings_reset)
             )
         }
         applyCurrentState()

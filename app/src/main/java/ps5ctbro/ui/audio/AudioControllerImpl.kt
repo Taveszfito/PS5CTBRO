@@ -24,6 +24,7 @@ import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.DueBoysenberry1226.ps5ctbro.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -120,12 +121,12 @@ class AudioControllerImpl private constructor(
                 val controller = connectToDualSense(device)
                 if (controller != null) {
                     setControllerConnected(true)
-                    setLog("USB engedély megadva, kontroller nyitva ✔")
+                    setLog(appContext.getString(R.string.log_usb_granted_open))
                 } else {
-                    setLog("USB engedély megvan, de a kontroller megnyitása sikertelen.")
+                    setLog(appContext.getString(R.string.log_usb_open_failed))
                 }
             } else {
-                setLog("USB engedély elutasítva.")
+                setLog(appContext.getString(R.string.log_usb_permission_denied))
             }
         }
     }
@@ -154,22 +155,22 @@ class AudioControllerImpl private constructor(
 
     override fun stopSystemAudioStreaming() {
         stopStreamingInternal()
-        setLog("Streaming leállítva.")
+        setLog(appContext.getString(R.string.log_streaming_stopped))
     }
 
     override fun onCapturePermissionDenied() {
         stopPhoneMuteForStreaming()
-        setLog("A rendszerhang capture engedélyt elutasítottad.")
+        setLog(appContext.getString(R.string.log_capture_denied))
     }
 
     override fun onRecordAudioPermissionDenied() {
         stopPhoneMuteForStreaming()
-        setLog("A mikrofon engedély kell a playback capture-höz.")
+        setLog(appContext.getString(R.string.log_mic_permission_required))
     }
 
     override fun onUnsupportedAndroidVersion() {
         stopPhoneMuteForStreaming()
-        setLog("Playback capture-hez Android 10+ kell.")
+        setLog(appContext.getString(R.string.log_android_10_required))
     }
 
     override fun setVolumeStep(step: Int) {
@@ -177,7 +178,7 @@ class AudioControllerImpl private constructor(
         _uiState.update { current ->
             current.copy(
                 volumeStep = clamped,
-                logText = "Hangerő: ${clamped + 1}/10"
+                logText = appContext.getString(R.string.label_volume_level, clamped + 1)
             )
         }
 
@@ -241,11 +242,11 @@ class AudioControllerImpl private constructor(
     private fun startStreamingInternal(context: Context, resultCode: Int, data: Intent): String {
         stopStreamingInternal(stopNative = true)
 
-        val device = findDualSenseDevice() ?: return "Nem találok USB-s DualSense kontrollert."
+        val device = findDualSenseDevice() ?: return appContext.getString(R.string.log_no_usb_dualsense)
 
         if (!usbManager.hasPermission(device)) {
             requestPermission(device)
-            return "USB engedély kérve. Add meg, majd nyomd meg újra a Startot."
+            return appContext.getString(R.string.log_usb_permission_start)
         }
 
         val hidLogs = buildString {
@@ -259,11 +260,11 @@ class AudioControllerImpl private constructor(
 
         if (!usbManager.hasPermission(device)) {
             requestPermission(device)
-            return "USB engedély kell az audio streamhez."
+            return appContext.getString(R.string.log_usb_permission_audio_required)
         }
 
         val route = openAudioRoute(device) ?: return buildString {
-            appendLine("Nem tudtam megnyitni az audio route-ot.")
+            appendLine(appContext.getString(R.string.log_audio_route_open_failed))
             appendLine("=== SPK HID ===")
             append(hidLogs)
         }
@@ -272,7 +273,7 @@ class AudioControllerImpl private constructor(
             route.connection.fileDescriptor
         } catch (_: SecurityException) {
             closeAudioRoute(route)
-            return "USB permission hiányzik a file descriptorhoz."
+            return appContext.getString(R.string.log_usb_fd_permission_missing)
         }
 
         val startRc = try {
@@ -284,12 +285,12 @@ class AudioControllerImpl private constructor(
             )
         } catch (_: SecurityException) {
             closeAudioRoute(route)
-            return "USB permission hiányzik (SecurityException)"
+            return appContext.getString(R.string.log_usb_security_exception)
         }
 
         if (startRc != 0) {
             closeAudioRoute(route)
-            return "nativeIsoStreamStart hiba, rc=$startRc"
+            return appContext.getString(R.string.log_native_stream_start_failed, startRc)
         }
 
         val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -299,11 +300,11 @@ class AudioControllerImpl private constructor(
             Log.e(TAG, "MediaProjection error", t)
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
-            return "MediaProjection hiba: ${t.message}"
+            return appContext.getString(R.string.log_media_projection_failed, t.message ?: "")
         } ?: run {
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
-            return "MediaProjection létrehozása sikertelen."
+            return appContext.getString(R.string.log_media_projection_create_failed)
         }
 
         // Add callback to detect when it stops
@@ -312,7 +313,7 @@ class AudioControllerImpl private constructor(
                 Log.w(TAG, "MediaProjection STOPPED!")
                 scope.launch {
                     stopStreamingInternal()
-                    setLog("Stream megszakadt (Rendszer leállította)")
+                    setLog(appContext.getString(R.string.log_stream_interrupted))
                 }
             }
         }, null)
@@ -324,18 +325,18 @@ class AudioControllerImpl private constructor(
             projection.stop()
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
-            return "AudioRecord létrehozása sikertelen: ${t.message}"
+            return appContext.getString(R.string.log_audio_record_failed, t.message ?: "")
         } ?: run {
             projection.stop()
             NativeAudioBridge.nativeIsoStreamStop()
             closeAudioRoute(route)
-            return "AudioRecord létrehozása sikertelen."
+            return appContext.getString(R.string.log_audio_record_create_failed)
         }
 
         return try {
             record.startRecording()
             if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
-                throw IllegalStateException("AudioRecord nem indult el (State: ${record.recordingState})")
+                throw IllegalStateException(appContext.getString(R.string.log_audio_record_start_failed, record.recordingState))
             }
 
             mediaProjection = projection
@@ -356,7 +357,7 @@ class AudioControllerImpl private constructor(
                 schedulePhoneMuteForStreaming()
             }
 
-            "STREAM STARTED"
+            appContext.getString(R.string.log_stream_started)
         } catch (t: Throwable) {
             Log.e(TAG, "Streaming start failed", t)
             try { record.release() } catch (_: Throwable) {}
@@ -365,7 +366,7 @@ class AudioControllerImpl private constructor(
             closeAudioRoute(route)
             stopPhoneMuteForStreaming()
             _uiState.update { it.copy(isStreaming = false) }
-            "STREAM START hiba: ${t.message}"
+            appContext.getString(R.string.log_stream_start_error, t.message ?: "")
         }
     }
 
@@ -549,7 +550,7 @@ class AudioControllerImpl private constructor(
     }
 
     private fun runSpeakerHid(): String {
-        val controller = ensureController() ?: return "Nem találok USB-s DualSense kontrollert."
+        val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
 
         val controllerVolume = currentControllerVolume()
 
@@ -753,7 +754,7 @@ class AudioControllerImpl private constructor(
 
         if (device == null) {
             setControllerConnected(false)
-            setLog("Nem találok USB-s DualSense kontrollert.")
+            setLog(appContext.getString(R.string.log_no_usb_dualsense))
             return
         }
 
@@ -761,15 +762,15 @@ class AudioControllerImpl private constructor(
             val controller = connectToDualSense(device)
             if (controller != null) {
                 setControllerConnected(true)
-                setLog("Kontroller automatikusan csatlakoztatva ✔")
+                setLog(appContext.getString(R.string.log_auto_connected))
             } else {
                 setControllerConnected(false)
-                setLog("A kontroller megvan, de az auto-connect sikertelen.")
+                setLog(appContext.getString(R.string.log_auto_connect_failed))
             }
         } else {
             requestPermission(device)
             setControllerConnected(false)
-            setLog("USB engedély kérve a kontrollerhez...")
+            setLog(appContext.getString(R.string.log_usb_permission_requested))
         }
     }
 

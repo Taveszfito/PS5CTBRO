@@ -20,7 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.StickState
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.TriggerState
@@ -49,15 +51,15 @@ fun InputTestScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Kapcsolat",
+                    text = stringResource(R.string.label_connection),
                     style = MaterialTheme.typography.titleLarge
                 )
 
                 Text(
                     text = if (uiState.controllerConnected) {
-                        "Kontroller csatlakoztatva"
+                        stringResource(R.string.status_connected)
                     } else {
-                        "Nincs aktív kontroller kapcsolat"
+                        stringResource(R.string.status_no_active_connection)
                     },
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -74,23 +76,23 @@ fun InputTestScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = onRefreshConnectionClick) {
-                        Text("Frissítés")
+                        Text(stringResource(R.string.button_refresh_short))
                     }
 
                     TextButton(onClick = onRefreshConnectionClick) {
-                        Text("Újranyitás")
+                        Text(stringResource(R.string.button_reopen))
                     }
                 }
             }
         }
 
         StickCard(
-            title = "Bal Stick",
+            title = stringResource(R.string.label_left_stick),
             stick = uiState.leftStick
         )
 
         StickCard(
-            title = "Jobb Stick",
+            title = stringResource(R.string.label_right_stick),
             stick = uiState.rightStick
         )
 
@@ -126,13 +128,13 @@ private fun PressedButtonsCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Lenyomott gombok",
+                text = stringResource(R.string.label_pressed_buttons),
                 style = MaterialTheme.typography.titleLarge
             )
 
             if (buttons.isEmpty()) {
                 Text(
-                    text = "Jelenleg nincs lenyomott gomb.",
+                    text = stringResource(R.string.msg_no_buttons_pressed),
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {

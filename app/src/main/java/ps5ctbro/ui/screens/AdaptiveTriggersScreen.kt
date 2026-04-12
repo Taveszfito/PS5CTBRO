@@ -31,7 +31,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerEffect
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
@@ -93,10 +95,10 @@ fun AdaptiveTriggersScreen(
 private fun TriggerStatusCard(
     controllerConnected: Boolean
 ) {
-    SectionCard(title = "Állapot") {
+    SectionCard(title = stringResource(R.string.card_title_status)) {
         StatusRow(
-            label = "Kontroller",
-            value = if (controllerConnected) "Csatlakoztatva" else "Nincs csatlakoztatva"
+            label = stringResource(R.string.label_controller),
+            value = if (controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
         )
     }
 }
@@ -109,9 +111,9 @@ private fun TriggerConfigCard(
     onApplyL2: (AdaptiveTriggerConfig) -> Unit,
     onApplyR2: (AdaptiveTriggerConfig) -> Unit
 ) {
-    SectionCard(title = "Beállítások") {
+    SectionCard(title = stringResource(R.string.card_title_settings)) {
         Text(
-            text = "Effekt típusa",
+            text = stringResource(R.string.label_effect_type),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -143,7 +145,7 @@ private fun TriggerConfigCard(
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         TriggerSliderRow(
-            label = "Kezdő pont",
+            label = stringResource(R.string.label_start_point),
             value = config.startPercent,
             valueText = "${config.startPercent}%",
             onValueChange = { newValue ->
@@ -154,7 +156,7 @@ private fun TriggerConfigCard(
         Spacer(modifier = Modifier.height(12.dp))
 
         TriggerSliderRow(
-            label = "Végpont",
+            label = stringResource(R.string.label_end_point),
             value = config.endPercent,
             valueText = "${config.endPercent}%",
             onValueChange = { newValue ->
@@ -167,7 +169,7 @@ private fun TriggerConfigCard(
         when (config.effect) {
             AdaptiveTriggerEffect.RESISTANCE -> {
                 TriggerSliderRow(
-                    label = "Ellenállás erőssége",
+                    label = stringResource(R.string.label_resistance_strength),
                     value = config.strengthPercent,
                     valueText = "${config.strengthPercent}%",
                     onValueChange = { newValue ->
@@ -178,7 +180,7 @@ private fun TriggerConfigCard(
 
             AdaptiveTriggerEffect.VIBRATION -> {
                 TriggerSliderRow(
-                    label = "Rezgés sebessége",
+                    label = stringResource(R.string.label_vibration_speed),
                     value = config.speedPercent,
                     valueText = "${config.speedPercent}%",
                     onValueChange = { newValue ->
@@ -189,7 +191,7 @@ private fun TriggerConfigCard(
 
             AdaptiveTriggerEffect.OFF -> {
                 TriggerSliderRow(
-                    label = "Ellenállás erőssége",
+                    label = stringResource(R.string.label_resistance_strength),
                     value = config.strengthPercent,
                     valueText = "${config.strengthPercent}%",
                     onValueChange = { newValue ->
@@ -209,14 +211,14 @@ private fun TriggerConfigCard(
                 onClick = { onApplyL2(config) },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("ALKALMAZ L2")
+                Text(stringResource(R.string.button_apply_l2))
             }
 
             Button(
                 onClick = { onApplyR2(config) },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("ALKALMAZ R2")
+                Text(stringResource(R.string.button_apply_r2))
             }
         }
     }
@@ -227,12 +229,12 @@ private fun TriggerActionsCard(
     onRefreshConnectionClick: () -> Unit,
     onResetClick: () -> Unit
 ) {
-    SectionCard(title = "Egyéb műveletek") {
+    SectionCard(title = stringResource(R.string.card_title_other_actions)) {
         Button(
             onClick = onRefreshConnectionClick,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("KAPCSOLAT FRISSÍTÉSE")
+            Text(stringResource(R.string.button_refresh_connection))
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -241,7 +243,7 @@ private fun TriggerActionsCard(
             onClick = onResetClick,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("TRIGGEREK NULLÁZÁSA")
+            Text(stringResource(R.string.button_reset_triggers))
         }
     }
 }
@@ -256,14 +258,14 @@ private fun EffectSelectorRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         EffectChip(
-            title = "Ellenállás",
+            title = stringResource(AdaptiveTriggerEffect.RESISTANCE.titleRes),
             selected = selectedEffect == AdaptiveTriggerEffect.RESISTANCE,
             onClick = { onEffectSelected(AdaptiveTriggerEffect.RESISTANCE) },
             modifier = Modifier.weight(1f)
         )
 
         EffectChip(
-            title = "Rezgés",
+            title = stringResource(AdaptiveTriggerEffect.VIBRATION.titleRes),
             selected = selectedEffect == AdaptiveTriggerEffect.VIBRATION,
             onClick = { onEffectSelected(AdaptiveTriggerEffect.VIBRATION) },
             modifier = Modifier.weight(1f)
@@ -325,7 +327,7 @@ private fun TriggerSliderRow(
 private fun TriggerLogCard(
     logText: String
 ) {
-    SectionCard(title = "Log") {
+    SectionCard(title = stringResource(R.string.card_title_log)) {
         Surface(
             tonalElevation = 1.dp,
             shape = CardDefaults.shape,

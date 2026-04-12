@@ -14,6 +14,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import com.DueBoysenberry1226.ps5ctbro.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -65,7 +66,9 @@ class LedControllerImpl(
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
 
-    private val _uiState = MutableStateFlow(LedUiState())
+    private val _uiState = MutableStateFlow(LedUiState(
+        logText = appContext.getString(R.string.led_log_ready)
+    ))
     override val uiState: StateFlow<LedUiState> = _uiState
 
     private var receiverRegistered = false
@@ -134,16 +137,16 @@ class LedControllerImpl(
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
 
             if (!granted || device == null) {
-                setConnectionState(false, "USB engedély elutasítva.")
+                setConnectionState(false, appContext.getString(R.string.log_usb_permission_denied))
                 return
             }
 
             reopenHandle(device)
 
             if (hidHandle != null) {
-                setConnectionState(true, "USB engedély megadva, LED vezérlés kész.")
+                setConnectionState(true, appContext.getString(R.string.log_trigger_control_ready)) // Using a similar generic ready log or could add specific LED one
             } else {
-                setConnectionState(false, "USB engedély megvan, de a HID kapcsolat nem nyitható meg.")
+                setConnectionState(false, appContext.getString(R.string.log_usb_open_failed))
             }
         }
     }
@@ -164,7 +167,7 @@ class LedControllerImpl(
         _uiState.update {
             it.copy(
                 controllerConnected = false,
-                logText = "LED képernyő elhagyva, HID kapcsolat elengedve."
+                logText = appContext.getString(R.string.log_led_screen_left)
             )
         }
     }
@@ -194,22 +197,22 @@ class LedControllerImpl(
             stopEffectLoop()
             closeHandle()
             lastSentSnapshot = null
-            setConnectionState(false, "Nincs csatlakoztatott USB-s DualSense.")
+            setConnectionState(false, appContext.getString(R.string.log_no_usb_dualsense))
             return
         }
 
         if (!usbManager.hasPermission(device)) {
             requestPermission(device)
-            setConnectionState(false, "DualSense megtalálva, de még kell USB engedély.")
+            setConnectionState(false, appContext.getString(R.string.log_dualsense_found_usb_permission))
             return
         }
 
         reopenHandle(device)
 
         if (hidHandle != null) {
-            setConnectionState(true, "DualSense csatlakoztatva, LED vezérlés készen áll.")
+            setConnectionState(true, appContext.getString(R.string.log_dualsense_connection_active))
         } else {
-            setConnectionState(false, "DualSense látszik, de a HID kapcsolat nem nyitható meg.")
+            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
         }
     }
 
@@ -230,7 +233,7 @@ class LedControllerImpl(
         _uiState.update {
             it.copy(
                 config = defaultConfig,
-                logText = "LED beállítások alaphelyzetbe állítva."
+                logText = appContext.getString(R.string.log_led_settings_reset)
             )
         }
 
@@ -256,7 +259,7 @@ class LedControllerImpl(
             stopEffectLoop()
             closeHandle()
             lastSentSnapshot = null
-            setConnectionState(false, "Nem találok USB-s DualSense kontrollert.")
+            setConnectionState(false, appContext.getString(R.string.log_no_usb_dualsense))
             return
         }
 
@@ -264,7 +267,7 @@ class LedControllerImpl(
             requestPermission(device)
             setConnectionState(
                 false,
-                "USB engedély kérve. Engedélyezd, majd próbáld újra."
+                appContext.getString(R.string.log_usb_permission_retry)
             )
             return
         }
@@ -275,7 +278,7 @@ class LedControllerImpl(
 
         val handle = hidHandle
         if (handle == null) {
-            setConnectionState(false, "A kontroller HID kapcsolata nem nyitható meg.")
+            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
             return
         }
 
@@ -305,12 +308,12 @@ class LedControllerImpl(
                     _uiState.update {
                         it.copy(
                             controllerConnected = true,
-                            logText = "LED kikapcsolva."
+                            logText = appContext.getString(R.string.log_led_off)
                         )
                     }
                 } else {
                     closeHandle()
-                    setConnectionState(false, "LED OFF report küldése sikertelen.")
+                    setConnectionState(false, appContext.getString(R.string.log_led_off_failed))
                 }
             }
 
@@ -336,12 +339,12 @@ class LedControllerImpl(
                     _uiState.update {
                         it.copy(
                             controllerConnected = true,
-                            logText = "Statikus LED alkalmazva."
+                            logText = appContext.getString(R.string.log_static_led_applied)
                         )
                     }
                 } else {
                     closeHandle()
-                    setConnectionState(false, "Statikus LED report küldése sikertelen.")
+                    setConnectionState(false, appContext.getString(R.string.log_static_led_failed))
                 }
             }
 
@@ -351,7 +354,7 @@ class LedControllerImpl(
                 _uiState.update {
                     it.copy(
                         controllerConnected = true,
-                        logText = "LED effekt fut: ${normalized.effect.title}"
+                        logText = appContext.getString(R.string.log_led_effect_running, appContext.getString(normalized.effect.titleRes))
                     )
                 }
             }
@@ -397,7 +400,7 @@ class LedControllerImpl(
                         _uiState.update {
                             it.copy(
                                 controllerConnected = false,
-                                logText = "LED effekt küldése megszakadt."
+                                logText = appContext.getString(R.string.log_led_effect_interrupted)
                             )
                         }
                         effectLoopRunning = false
@@ -450,7 +453,7 @@ class LedControllerImpl(
 
     private fun hsvToRgb(h: Float, s: Float, v: Float): LedColor {
         val c = v * s
-        val x = c * (1f - abs(((h / 60f) % 2f) - 1f))
+        val x = v * s * (1f - abs(((h / 60f) % 2f) - 1f))
         val m = v - c
 
         val (rPrime, gPrime, bPrime) = when {
@@ -751,9 +754,9 @@ class LedControllerImpl(
                 current.copy(
                     config = toggledConfig,
                     logText = if (toggledConfig.micLedEnabled) {
-                        "Mic LED bekapcsolva a kontroller gombjáról."
+                        appContext.getString(R.string.log_mic_led_on_from_controller)
                     } else {
-                        "Mic LED kikapcsolva a kontroller gombjáról."
+                        appContext.getString(R.string.log_mic_led_off_from_controller)
                     }
                 )
             }

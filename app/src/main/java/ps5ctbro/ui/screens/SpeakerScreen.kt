@@ -35,7 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 
 @Composable
@@ -106,31 +108,31 @@ private fun StatusCard(
     var showStatusInfoDialog by remember { mutableStateOf(false) }
 
     SectionCard(
-        title = "Állapot",
+        title = stringResource(R.string.card_title_status),
         titleTrailing = {
             IconButton(
                 onClick = { showStatusInfoDialog = true }
             ) {
                 Icon(
                     imageVector = Icons.Default.Info,
-                    contentDescription = "Infó"
+                    contentDescription = stringResource(R.string.content_desc_info)
                 )
             }
         }
     ) {
         StatusRow(
-            label = "Kontroller",
-            value = if (controllerConnected) "Csatlakoztatva" else "Nincs csatlakoztatva"
+            label = stringResource(R.string.label_controller),
+            value = if (controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
         StatusRow(
-            label = "Stream",
-            value = if (isStreaming) "Fut" else "Áll"
+            label = stringResource(R.string.label_stream),
+            value = if (isStreaming) stringResource(R.string.status_running) else stringResource(R.string.status_stopped)
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
         StatusRow(
-            label = "Hangerő",
-            value = "${volumeStep + 1}/10"
+            label = stringResource(R.string.label_volume),
+            value = stringResource(R.string.label_volume_level, volumeStep + 1)
         )
     }
 
@@ -138,20 +140,16 @@ private fun StatusCard(
         AlertDialog(
             onDismissRequest = { showStatusInfoDialog = false },
             title = {
-                Text("Állapot információ")
+                Text(stringResource(R.string.dialog_title_status_info))
             },
             text = {
-                Text("Ha a stream nem indul el, ellenőrizd, hogy minden szükséges engedély meg van adva az alkalmazásnak, és az akkumulátor-kezelés nem korlátozza a háttérben futását.\n" +
-                        "\n" +
-                        "A streamet teljes képernyős (full screen) módban indítsd, ne egyetlen alkalmazás rögzítésével.\n" +
-                        "\n" +
-                        "Ha továbbra sincs hang, csatlakoztasd újra a kontrollert, majd indítás előtt nyomd meg a „Speaker Route alkalmazása” gombot, és próbáld újra. ")
+                Text(stringResource(R.string.status_info_text))
             },
             confirmButton = {
                 TextButton(
                     onClick = { showStatusInfoDialog = false }
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.button_ok))
                 }
             }
         )
@@ -165,14 +163,14 @@ private fun ActionsCard(
     onStopStreamClick: () -> Unit,
     onApplySpeakerRouteClick: () -> Unit
 ) {
-    SectionCard(title = "Fő műveletek") {
+    SectionCard(title = stringResource(R.string.card_title_main_actions)) {
         Button(
             onClick = {
                 if (isStreaming) onStopStreamClick() else onStartStreamClick()
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isStreaming) "STREAM LEÁLLÍTÁSA" else "STREAM INDÍTÁSA")
+            Text(if (isStreaming) stringResource(R.string.button_stop_stream) else stringResource(R.string.button_start_stream))
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -181,7 +179,7 @@ private fun ActionsCard(
             onClick = onApplySpeakerRouteClick,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("SPEAKER ROUTE ALKALMAZÁSA")
+            Text(stringResource(R.string.button_apply_speaker_route))
         }
     }
 }
@@ -197,30 +195,30 @@ private fun ChannelRoutesCard(
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit
 ) {
-    SectionCard(title = "Audio csatornák") {
+    SectionCard(title = stringResource(R.string.card_title_audio_channels)) {
         ChannelToggleRow(
-            title = "1-es csatorna.",
+            title = stringResource(R.string.channel_1),
             checked = routeCh1,
             onCheckedChange = onRouteCh1Changed
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "Hangszóró",
+            title = stringResource(R.string.channel_speaker),
             checked = routeCh2,
             onCheckedChange = onRouteCh2Changed
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "Bal rezgőmotor",
+            title = stringResource(R.string.channel_vibration_left),
             checked = routeCh3,
             onCheckedChange = onRouteCh3Changed
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "Jobb rezgőmotor",
+            title = stringResource(R.string.channel_vibration_right),
             checked = routeCh4,
             onCheckedChange = onRouteCh4Changed
         )
@@ -239,20 +237,20 @@ private fun VolumeCard(
     var showInfoDialog by remember { mutableStateOf(false) }
 
     SectionCard(
-        title = "Hangerő",
+        title = stringResource(R.string.label_volume),
         titleTrailing = {
             IconButton(
                 onClick = { showInfoDialog = true }
             ) {
                 Icon(
                     imageVector = Icons.Default.Info,
-                    contentDescription = "Hangerő információ"
+                    contentDescription = stringResource(R.string.content_desc_volume_info)
                 )
             }
         }
     ) {
         Text(
-            text = "Szint: ${volumeStep + 1}/10",
+            text = stringResource(R.string.label_volume_level, volumeStep + 1),
             style = MaterialTheme.typography.bodyLarge
         )
 
@@ -276,14 +274,14 @@ private fun VolumeCard(
                 onClick = { onVolumeStepChanged(volumeStep - 1) },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("VOL -")
+                Text(stringResource(R.string.button_vol_minus))
             }
 
             Button(
                 onClick = { onVolumeStepChanged(volumeStep + 1) },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("VOL +")
+                Text(stringResource(R.string.button_vol_plus))
             }
         }
 
@@ -292,7 +290,7 @@ private fun VolumeCard(
         Spacer(modifier = Modifier.height(12.dp))
 
         ChannelToggleRow(
-            title = "Telefon némítása stream közben",
+            title = stringResource(R.string.label_mute_phone),
             checked = mutePhoneWhileStreaming,
             onCheckedChange = onMutePhoneWhileStreamingChanged
         )
@@ -300,7 +298,7 @@ private fun VolumeCard(
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         ChannelToggleRow(
-            title = "Hangerőgombok a kontrollert állítsák",
+            title = stringResource(R.string.label_hw_volume_control),
             checked = hardwareVolumeButtonsControlController,
             onCheckedChange = onHardwareVolumeButtonsControlControllerChanged
         )
@@ -310,16 +308,16 @@ private fun VolumeCard(
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
             title = {
-                Text("Infó")
+                Text(stringResource(R.string.button_ok))
             },
             text = {
-                Text("Ha egy általános jack csatlakozót dugsz a kontroller csatlakozójába a lejátszott hangerő a külső hangszórón sokkal hangosabb lesz.")
+                Text(stringResource(R.string.volume_info_text))
             },
             confirmButton = {
                 TextButton(
                     onClick = { showInfoDialog = false }
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.button_ok))
                 }
             }
         )
@@ -328,7 +326,7 @@ private fun VolumeCard(
 
 @Composable
 private fun LogCard(logText: String) {
-    SectionCard(title = "Log") {
+    SectionCard(title = stringResource(R.string.card_title_log)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surfaceVariant,

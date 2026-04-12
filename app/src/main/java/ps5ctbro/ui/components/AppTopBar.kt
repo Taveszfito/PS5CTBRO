@@ -27,7 +27,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.AppSection
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +49,7 @@ fun AppTopBar(
             IconButton(onClick = onMenuClick) {
                 Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu"
+                    contentDescription = stringResource(R.string.content_desc_menu)
                 )
             }
         }
@@ -82,51 +84,24 @@ fun AppDrawerContent(
                 IconButton(onClick = onCloseClick) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = "Close"
+                        contentDescription = stringResource(R.string.content_desc_close)
                     )
                 }
 
                 Text(
-                    text = currentSection.title,
+                    text = stringResource(currentSection.titleRes),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(top = 16.dp)
                 )
             }
 
-            DrawerMenuItem(
-                title = AppSection.SPEAKER.title,
-                selected = currentSection == AppSection.SPEAKER,
-                onClick = { onSectionSelected(AppSection.SPEAKER) }
-            )
-
-            DrawerMenuItem(
-                title = AppSection.ADAPTIVE_TRIGGERS.title,
-                selected = currentSection == AppSection.ADAPTIVE_TRIGGERS,
-                onClick = { onSectionSelected(AppSection.ADAPTIVE_TRIGGERS) }
-            )
-
-            DrawerMenuItem(
-                title = AppSection.LEDS.title,
-                selected = currentSection == AppSection.LEDS,
-                onClick = { onSectionSelected(AppSection.LEDS) }
-            )
-            DrawerMenuItem(
-                title = AppSection.INPUT_TEST.title,
-                selected = currentSection == AppSection.INPUT_TEST,
-                onClick = { onSectionSelected(AppSection.INPUT_TEST) }
-            )
-
-            DrawerMenuItem(
-                title = AppSection.SETTINGS.title,
-                selected = currentSection == AppSection.SETTINGS,
-                onClick = { onSectionSelected(AppSection.SETTINGS) }
-            )
-
-            DrawerMenuItem(
-                title = AppSection.DEBUG.title,
-                selected = currentSection == AppSection.DEBUG,
-                onClick = { onSectionSelected(AppSection.DEBUG) }
-            )
+            AppSection.entries.forEach { section ->
+                DrawerMenuItem(
+                    title = stringResource(section.titleRes),
+                    selected = currentSection == section,
+                    onClick = { onSectionSelected(section) }
+                )
+            }
         }
     }
 }

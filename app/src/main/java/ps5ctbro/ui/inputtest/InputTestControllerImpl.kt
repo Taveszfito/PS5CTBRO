@@ -13,6 +13,7 @@ import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.DueBoysenberry1226.ps5ctbro.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -95,7 +96,7 @@ class InputTestControllerImpl(
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
 
             if (!granted || device == null) {
-                setConnectionState(false, "USB engedély elutasítva.")
+                setConnectionState(false, appContext.getString(R.string.log_usb_permission_denied))
                 return
             }
 
@@ -104,7 +105,7 @@ class InputTestControllerImpl(
                 _uiState.update {
                     it.copy(
                         controllerConnected = false,
-                        logText = "USB engedély megjött, de az Input Test oldal már nem aktív."
+                        logText = appContext.getString(R.string.log_usb_permission_not_active)
                     )
                 }
                 return
@@ -113,9 +114,9 @@ class InputTestControllerImpl(
             reopenHandle(device)
 
             if (hidHandle != null) {
-                setConnectionState(true, "USB engedély megadva, Input Test kész.")
+                setConnectionState(true, appContext.getString(R.string.log_usb_permission_granted_ready))
             } else {
-                setConnectionState(false, "USB engedély megvan, de a HID kapcsolat nem nyitható meg.")
+                setConnectionState(false, appContext.getString(R.string.log_usb_permission_hid_failed))
             }
         }
     }
@@ -135,7 +136,7 @@ class InputTestControllerImpl(
         _uiState.update {
             it.copy(
                 controllerConnected = false,
-                logText = "Input Test képernyő elhagyva, HID kapcsolat elengedve."
+                logText = appContext.getString(R.string.log_screen_hidden_released)
             )
         }
     }
@@ -146,7 +147,7 @@ class InputTestControllerImpl(
             _uiState.update {
                 it.copy(
                     controllerConnected = false,
-                    logText = "Input Test nem aktív, HID kapcsolat nem nyitható."
+                    logText = appContext.getString(R.string.log_screen_not_active_no_hid)
                 )
             }
             return
@@ -155,22 +156,22 @@ class InputTestControllerImpl(
         val device = findDualSenseDevice()
         if (device == null) {
             closeHandle()
-            setConnectionState(false, "DualSense nincs csatlakoztatva USB-n.")
+            setConnectionState(false, appContext.getString(R.string.log_dualsense_not_connected_usb))
             return
         }
 
         if (!usbManager.hasPermission(device)) {
             requestPermission(device)
-            setConnectionState(false, "USB engedély szükséges az Input Testhez.")
+            setConnectionState(false, appContext.getString(R.string.log_usb_permission_required))
             return
         }
 
         reopenHandle(device)
 
         if (hidHandle != null) {
-            setConnectionState(true, "DualSense Input Test kapcsolat aktív.")
+            setConnectionState(true, appContext.getString(R.string.log_dualsense_connection_active))
         } else {
-            setConnectionState(false, "A HID interfész nem található vagy nem nyitható meg.")
+            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
         }
     }
 
@@ -435,7 +436,7 @@ class InputTestControllerImpl(
                 ),
                 pressedButtons = pressedButtons,
                 rawReportInfo = rawReportInfo,
-                logText = "Input stream aktív."
+                logText = appContext.getString(R.string.log_input_stream_active)
             )
         }
     }
@@ -448,45 +449,45 @@ class InputTestControllerImpl(
         val pressed = mutableListOf<String>()
 
         when (buttons0 and 0x0F) {
-            0 -> pressed += "D-Pad Up"
+            0 -> pressed += appContext.getString(R.string.btn_dpad_up)
             1 -> {
-                pressed += "D-Pad Up"
-                pressed += "D-Pad Right"
+                pressed += appContext.getString(R.string.btn_dpad_up)
+                pressed += appContext.getString(R.string.btn_dpad_right)
             }
-            2 -> pressed += "D-Pad Right"
+            2 -> pressed += appContext.getString(R.string.btn_dpad_right)
             3 -> {
-                pressed += "D-Pad Right"
-                pressed += "D-Pad Down"
+                pressed += appContext.getString(R.string.btn_dpad_right)
+                pressed += appContext.getString(R.string.btn_dpad_down)
             }
-            4 -> pressed += "D-Pad Down"
+            4 -> pressed += appContext.getString(R.string.btn_dpad_down)
             5 -> {
-                pressed += "D-Pad Down"
-                pressed += "D-Pad Left"
+                pressed += appContext.getString(R.string.btn_dpad_down)
+                pressed += appContext.getString(R.string.btn_dpad_left)
             }
-            6 -> pressed += "D-Pad Left"
+            6 -> pressed += appContext.getString(R.string.btn_dpad_left)
             7 -> {
-                pressed += "D-Pad Left"
-                pressed += "D-Pad Up"
+                pressed += appContext.getString(R.string.btn_dpad_left)
+                pressed += appContext.getString(R.string.btn_dpad_up)
             }
         }
 
-        if ((buttons0 and 0x10) != 0) pressed += "Square"
-        if ((buttons0 and 0x20) != 0) pressed += "Cross"
-        if ((buttons0 and 0x40) != 0) pressed += "Circle"
-        if ((buttons0 and 0x80) != 0) pressed += "Triangle"
+        if ((buttons0 and 0x10) != 0) pressed += appContext.getString(R.string.btn_square)
+        if ((buttons0 and 0x20) != 0) pressed += appContext.getString(R.string.btn_cross)
+        if ((buttons0 and 0x40) != 0) pressed += appContext.getString(R.string.btn_circle)
+        if ((buttons0 and 0x80) != 0) pressed += appContext.getString(R.string.btn_triangle)
 
-        if ((buttons1 and 0x01) != 0) pressed += "L1"
-        if ((buttons1 and 0x02) != 0) pressed += "R1"
-        if ((buttons1 and 0x04) != 0) pressed += "L2 Click"
-        if ((buttons1 and 0x08) != 0) pressed += "R2 Click"
-        if ((buttons1 and 0x10) != 0) pressed += "Create"
-        if ((buttons1 and 0x20) != 0) pressed += "Options"
-        if ((buttons1 and 0x40) != 0) pressed += "L3"
-        if ((buttons1 and 0x80) != 0) pressed += "R3"
+        if ((buttons1 and 0x01) != 0) pressed += appContext.getString(R.string.btn_l1)
+        if ((buttons1 and 0x02) != 0) pressed += appContext.getString(R.string.btn_r1)
+        if ((buttons1 and 0x04) != 0) pressed += appContext.getString(R.string.btn_l2_click)
+        if ((buttons1 and 0x08) != 0) pressed += appContext.getString(R.string.btn_r2_click)
+        if ((buttons1 and 0x10) != 0) pressed += appContext.getString(R.string.btn_create)
+        if ((buttons1 and 0x20) != 0) pressed += appContext.getString(R.string.btn_options)
+        if ((buttons1 and 0x40) != 0) pressed += appContext.getString(R.string.btn_l3)
+        if ((buttons1 and 0x80) != 0) pressed += appContext.getString(R.string.btn_r3)
 
-        if ((buttons2 and 0x01) != 0) pressed += "PS"
-        if ((buttons2 and 0x02) != 0) pressed += "Touchpad Click"
-        if ((buttons2 and 0x04) != 0) pressed += "Mic Mute"
+        if ((buttons2 and 0x01) != 0) pressed += appContext.getString(R.string.btn_ps)
+        if ((buttons2 and 0x02) != 0) pressed += appContext.getString(R.string.btn_touchpad_click)
+        if ((buttons2 and 0x04) != 0) pressed += appContext.getString(R.string.btn_mic_mute)
 
         return pressed.distinct()
     }

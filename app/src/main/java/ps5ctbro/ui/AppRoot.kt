@@ -18,6 +18,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
@@ -138,7 +140,7 @@ fun AppRoot(
         Scaffold(
             topBar = {
                 AppTopBar(
-                    title = currentSection.title,
+                    title = stringResource(currentSection.titleRes),
                     onMenuClick = {
                         scope.launch {
                             if (drawerState.isClosed) {
@@ -208,15 +210,15 @@ fun AppRoot(
 
                         AppSection.SETTINGS -> {
                             PlaceholderScreen(
-                                title = "Beállítások",
-                                subtitle = "Ez később kerül ide."
+                                title = stringResource(R.string.section_settings),
+                                subtitle = stringResource(R.string.placeholder_subtitle)
                             )
                         }
 
                         AppSection.DEBUG -> {
                             PlaceholderScreen(
-                                title = "Debug",
-                                subtitle = "Ez később kerül ide."
+                                title = stringResource(R.string.section_debug),
+                                subtitle = stringResource(R.string.placeholder_subtitle)
                             )
                         }
                     }

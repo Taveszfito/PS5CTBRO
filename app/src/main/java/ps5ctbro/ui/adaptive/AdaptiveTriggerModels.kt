@@ -1,9 +1,12 @@
 package com.DueBoysenberry1226.ps5ctbro.adaptive
 
-enum class AdaptiveTriggerEffect {
-    OFF,
-    RESISTANCE,
-    VIBRATION
+import androidx.annotation.StringRes
+import com.DueBoysenberry1226.ps5ctbro.R
+
+enum class AdaptiveTriggerEffect(@StringRes val titleRes: Int) {
+    OFF(R.string.led_effect_off),
+    RESISTANCE(R.string.effect_resistance),
+    VIBRATION(R.string.effect_vibration)
 }
 
 enum class TriggerSide {
