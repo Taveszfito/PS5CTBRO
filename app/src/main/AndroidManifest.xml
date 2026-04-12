@@ -16,7 +16,8 @@
         android:allowAudioPlaybackCapture="true"
         android:label="PS5CTBro"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PS5CTBro">
+        android:theme="@style/Theme.PS5CTBro"
+        android:localeConfig="@xml/locales_config">
 
         <activity
             android:name=".MainActivity"

@@ -152,4 +152,10 @@
     <string name="log_trigger_failed">Trigger report küldése sikertelen. sent=%1$d / expected=%2$d</string>
     <string name="log_spk_hid_ok">SPK HID OK | vol=0x%1$s</string>
     <string name="log_spk_hid_fail">SPK HID fail</string>
+
+    <string name="card_title_language">Nyelv</string>
+    <string name="label_language_english">Angol</string>
+    <string name="label_language_hungarian">Magyar</string>
+    <string name="card_title_about">Névjegy</string>
+    <string name="label_version">Verzió</string>
 </resources>

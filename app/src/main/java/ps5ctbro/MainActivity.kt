@@ -5,11 +5,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,15 +17,19 @@ import com.DueBoysenberry1226.ps5ctbro.ui.AppRoot
 import com.DueBoysenberry1226.ps5ctbro.ui.adaptive.AdaptiveTriggersViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedViewModel
+import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PS5CTBroTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val viewModel: SpeakerViewModel by viewModels()
     private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
     private val ledViewModel: LedViewModel by viewModels()
     private val inputTestViewModel: InputTestViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -40,9 +42,6 @@ class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-            // Akár megadta, akár nem, megpróbáljuk indítani a capture-t. 
-            // Android 13+ esetén a notification nem jelenik meg ha nincs megadva, 
-            // de a service elindulhat (bár a foreground service-eknél kritikus lehet).
             launchCapturePermission()
         }
 
@@ -66,12 +65,14 @@ class MainActivity : ComponentActivity() {
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
                 val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
                 val inputTestUiState by inputTestViewModel.uiState.collectAsStateWithLifecycle()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
                 AppRoot(
                     speakerUiState = speakerUiState,
                     adaptiveTriggersUiState = adaptiveTriggersUiState,
                     ledUiState = ledUiState,
                     inputTestUiState = inputTestUiState,
+                    settingsUiState = settingsUiState,
                     onStartStreamClick = ::handleStartStreamClick,
                     onStopStreamClick = ::handleStopStreamClick,
                     onApplySpeakerRouteClick = viewModel::applySpeakerRoute,
@@ -110,7 +111,8 @@ class MainActivity : ComponentActivity() {
                     onResetLedClick = ledViewModel::resetToDefault,
                     onInputTestScreenVisible = inputTestViewModel::onScreenVisible,
                     onInputTestScreenHidden = inputTestViewModel::onScreenHidden,
-                    onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection
+                    onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection,
+                    onLanguageSelected = settingsViewModel::setLanguage
                 )
             }
         }
@@ -165,7 +167,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launchCapturePermission() {
-        // Először elindítjuk a service-t üresen, hogy mire a permission megjön, már legyen foreground context
         startMediaProjectionService()
         capturePermissionLauncher.launch(viewModel.createScreenCaptureIntent())
     }

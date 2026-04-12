@@ -171,4 +171,10 @@
     <string name="btn_ps">PS</string>
     <string name="btn_touchpad_click">Touchpad Click</string>
     <string name="btn_mic_mute">Mic Mute</string>
+
+    <string name="card_title_language">Language</string>
+    <string name="label_language_english">English</string>
+    <string name="label_language_hungarian">Hungarian</string>
+    <string name="card_title_about">About</string>
+    <string name="label_version">Version</string>
 </resources>

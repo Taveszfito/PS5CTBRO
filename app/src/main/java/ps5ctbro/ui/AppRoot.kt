@@ -32,7 +32,9 @@ import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.PlaceholderScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.SettingsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +44,7 @@ fun AppRoot(
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
     ledUiState: LedUiState,
     inputTestUiState: InputTestUiState,
+    settingsUiState: SettingsUiState,
     onStartStreamClick: () -> Unit,
     onStopStreamClick: () -> Unit,
     onApplySpeakerRouteClick: () -> Unit,
@@ -67,7 +70,8 @@ fun AppRoot(
     onResetLedClick: () -> Unit,
     onInputTestScreenVisible: () -> Unit,
     onInputTestScreenHidden: () -> Unit,
-    onRefreshInputTestConnectionClick: () -> Unit
+    onRefreshInputTestConnectionClick: () -> Unit,
+    onLanguageSelected: (String) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -209,9 +213,9 @@ fun AppRoot(
                         }
 
                         AppSection.SETTINGS -> {
-                            PlaceholderScreen(
-                                title = stringResource(R.string.section_settings),
-                                subtitle = stringResource(R.string.placeholder_subtitle)
+                            SettingsScreen(
+                                uiState = settingsUiState,
+                                onLanguageSelected = onLanguageSelected
                             )
                         }
 
