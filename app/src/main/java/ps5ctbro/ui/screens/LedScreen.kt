@@ -402,6 +402,18 @@ private fun EffectSelectorRow(
                 modifier = Modifier.weight(1f)
             )
         }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = selectedEffect == LedEffect.MUSIC_REACTIVE,
+                onClick = { onEffectSelected(LedEffect.MUSIC_REACTIVE) },
+                label = { Text(stringResource(LedEffect.MUSIC_REACTIVE.titleRes)) },
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 package com.DueBoysenberry1226.ps5ctbro.audio
 
 
+import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
 import kotlinx.coroutines.isActive
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -86,6 +87,7 @@ class AudioControllerImpl private constructor(
 
     private val _uiState = MutableStateFlow(AudioUiState())
     override val uiState: StateFlow<AudioUiState> = _uiState
+    val audioLevelFlow = MutableStateFlow(0f)
 
     override val sessionToken: MediaSession.Token?
         get() = mediaSession?.sessionToken
@@ -424,6 +426,8 @@ class AudioControllerImpl private constructor(
                         break
                     }
 
+                    audioLevelFlow.value = calculateAudioLevel(inputShorts, read)
+
                     stereoToQuadMono(inputShorts, outputBytes, framesPerChunk)
                     NativeAudioBridge.nativeIsoPushPcm(outputBytes)
                 }
@@ -533,6 +537,19 @@ class AudioControllerImpl private constructor(
     private fun writeShortLe(buffer: ByteArray, offset: Int, value: Short) {
         buffer[offset] = (value.toInt() and 0xFF).toByte()
         buffer[offset + 1] = ((value.toInt() shr 8) and 0xFF).toByte()
+    }
+
+    private fun calculateAudioLevel(buffer: ShortArray, sampleCount: Int): Float {
+        if (sampleCount <= 0) return 0f
+
+        var sum = 0.0
+        for (i in 0 until sampleCount) {
+            val s = buffer[i].toInt()
+            sum += (s * s).toDouble()
+        }
+
+        val rms = kotlin.math.sqrt(sum / sampleCount)
+        return (rms / 32768.0).toFloat().coerceIn(0f, 1f)
     }
 
     private fun currentControllerVolume(): Int {

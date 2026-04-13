@@ -165,6 +165,7 @@
     <string name="label_gain_value">Erősítés: %1$.2f</string>
     <string name="gain_description">Digitális hangerő erősítés beállítása a rendszerhang továbbításához.</string>
     <string name="msg_volume_distortion">! Hangerő torzulás megfigyelhető !</string>
+    <string name="led_effect_music_reactive"> Zenére Reagáló</string>
 
     <string name="dialog_info_title">Hibaelhárítás</string>
     <string name="dialog_info_body">Ha a stream nem indul el:\n\n• Ellenőrizd, hogy minden szükséges engedély meg van adva az alkalmazásnak\n• Győződj meg róla, hogy az akkumulátor-kezelés nem korlátozza a háttérben futást\n\nA streamet mindig teljes képernyős (full screen) módban indítsd, ne egyetlen alkalmazás rögzítésével.\n\nHa továbbra sincs hang:\n\n• Csatlakoztasd újra a kontrollert\n• Indítás előtt nyomd meg a „Speaker Route alkalmazása” gombot\n• Ezután próbáld újra a streamet</string>

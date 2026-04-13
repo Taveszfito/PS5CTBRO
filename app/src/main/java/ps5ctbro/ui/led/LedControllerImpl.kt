@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.led
 
+import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -65,6 +66,14 @@ class LedControllerImpl(
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+
+    private val audioController = AudioControllerImpl.getInstance(appContext)
+
+    @Volatile
+    private var smoothedAudioLevel = 0f
+    private var beatDetectionThreshold = 0.15f
+    private var lastBeatMs = 0L
+    private var musicHue = 0f
 
     private val _uiState = MutableStateFlow(LedUiState(
         logText = appContext.getString(R.string.led_log_ready)
@@ -349,12 +358,16 @@ class LedControllerImpl(
             }
 
             LedEffect.BREATH,
-            LedEffect.COLOR_CYCLE -> {
+            LedEffect.COLOR_CYCLE,
+            LedEffect.MUSIC_REACTIVE -> {
                 startEffectLoop(normalized)
                 _uiState.update {
                     it.copy(
                         controllerConnected = true,
-                        logText = appContext.getString(R.string.log_led_effect_running, appContext.getString(normalized.effect.titleRes))
+                        logText = appContext.getString(
+                            R.string.log_led_effect_running,
+                            appContext.getString(normalized.effect.titleRes)
+                        )
                     )
                 }
             }
@@ -376,23 +389,86 @@ class LedControllerImpl(
                 val color = when (config.effect) {
                     LedEffect.BREATH -> calculateBreathColor(config, elapsedMs)
                     LedEffect.COLOR_CYCLE -> calculateCycleColor(config, elapsedMs)
+
+                    LedEffect.MUSIC_REACTIVE -> {
+                        val rawLevel = audioController.audioLevelFlow.value
+                        val now = SystemClock.elapsedRealtime()
+
+                        // Gyorsabb felfutás (attack), lassabb lecsengés (decay) a lüktetéshez
+                        if (rawLevel > smoothedAudioLevel) {
+                            smoothedAudioLevel = smoothedAudioLevel * 0.15f + rawLevel * 0.85f
+                        } else {
+                            smoothedAudioLevel = smoothedAudioLevel * 0.80f + rawLevel * 0.20f
+                        }
+
+                        // Ütem detektálás (hirtelen megugrás a küszöb felett)
+                        if (rawLevel > beatDetectionThreshold && now - lastBeatMs > 180) {
+                            lastBeatMs = now
+                            musicHue = (musicHue + 45f) % 360f // Színváltás ütemre
+                            // Adaptív küszöb emelés
+                            beatDetectionThreshold = (beatDetectionThreshold * 0.3f + rawLevel * 0.7f).coerceIn(0.15f, 0.7f)
+                        } else {
+                            // Küszöb lassú csökkentése
+                            beatDetectionThreshold = (beatDetectionThreshold * 0.995f).coerceAtLeast(0.10f)
+                        }
+
+                        // Lassú alap színforgás ütemek között is
+                        musicHue = (musicHue + 0.3f) % 360f
+
+                        val baseColor = hsvToRgb(musicHue, 1f, 1f)
+                        val intensity = (0.05f + (smoothedAudioLevel * smoothedAudioLevel) * 2.0f + smoothedAudioLevel * 0.5f)
+                            .coerceIn(0.0f, 1.3f)
+
+                        LedColor(
+                            red = (baseColor.red * intensity).toInt().coerceIn(0, 255),
+                            green = (baseColor.green * intensity).toInt().coerceIn(0, 255),
+                            blue = (baseColor.blue * intensity).toInt().coerceIn(0, 255)
+                        )
+                    }
+
                     LedEffect.STATIC -> config.color
                     LedEffect.OFF -> LedColor(0, 0, 0)
                 }
 
                 val lightbarEnabled = config.lightbarBrightnessPercent > 0 && config.effect != LedEffect.OFF
+                val now = SystemClock.elapsedRealtime()
+
+                val playerMaskForMusic =
+                    if (config.effect == LedEffect.MUSIC_REACTIVE) {
+                        val beatPulse = if (now - lastBeatMs < 100) 1 else 0
+                        when {
+                            beatPulse == 1 || smoothedAudioLevel > 0.80f -> 0b11111
+                            smoothedAudioLevel > 0.60f -> 0b01110
+                            smoothedAudioLevel > 0.40f -> 0b01010
+                            smoothedAudioLevel > 0.20f -> 0b00100
+                            else -> 0b00000
+                        }
+                    } else {
+                        config.playerLedMask
+                    }
+
+                val micLedForMusic =
+                    if (config.effect == LedEffect.MUSIC_REACTIVE) {
+                        (now - lastBeatMs < 80) || (smoothedAudioLevel > 0.75f)
+                    } else {
+                        config.micLedEnabled
+                    }
 
                 val snapshot = snapshotOf(
                     config = config,
                     color = color,
-                    lightbarEnabled = lightbarEnabled
+                    lightbarEnabled = lightbarEnabled,
+                    playerLedMaskOverride = playerMaskForMusic,
+                    micLedEnabledOverride = micLedForMusic
                 )
 
                 if (snapshot != lastSentSnapshot) {
                     val report = buildLedReport(
                         config = config,
                         lightbarColor = color,
-                        lightbarEnabled = lightbarEnabled
+                        lightbarEnabled = lightbarEnabled,
+                        playerLedMaskOverride = playerMaskForMusic,
+                        micLedEnabledOverride = micLedForMusic
                     )
 
                     val success = sendReport(handle, report)
@@ -475,7 +551,9 @@ class LedControllerImpl(
     private fun snapshotOf(
         config: LedConfig,
         color: LedColor,
-        lightbarEnabled: Boolean
+        lightbarEnabled: Boolean,
+        playerLedMaskOverride: Int? = null,
+        micLedEnabledOverride: Boolean? = null
     ): LedSendSnapshot {
         return LedSendSnapshot(
             effect = config.effect,
@@ -485,8 +563,8 @@ class LedControllerImpl(
             lightbarBrightnessPercent = config.lightbarBrightnessPercent,
             animationSpeedPercent = config.animationSpeedPercent,
             playerLedBrightnessRaw = config.playerLedBrightness.rawValue,
-            playerLedMaskRaw = config.playerLedMask and 0x1F,
-            micLedEnabled = config.micLedEnabled,
+            playerLedMaskRaw = (playerLedMaskOverride ?: config.playerLedMask) and 0x1F,
+            micLedEnabled = micLedEnabledOverride ?: config.micLedEnabled,
             lightbarEnabled = lightbarEnabled
         )
     }
@@ -507,7 +585,9 @@ class LedControllerImpl(
     private fun buildLedReport(
         config: LedConfig,
         lightbarColor: LedColor,
-        lightbarEnabled: Boolean
+        lightbarEnabled: Boolean,
+        playerLedMaskOverride: Int? = null,
+        micLedEnabledOverride: Boolean? = null
     ): ByteArray {
         val report = ByteArray(OUTPUT_REPORT_SIZE_USB)
 
@@ -529,12 +609,15 @@ class LedControllerImpl(
                 LIGHTBAR_SETUP_LIGHT_OUT.toByte()
             }
 
+        val micLedEnabled = micLedEnabledOverride ?: config.micLedEnabled
+        val playerLedMask = (playerLedMaskOverride ?: config.playerLedMask) and 0x1F
+
         report[MUTE_BUTTON_LED_INDEX] =
-            if (config.micLedEnabled) 1.toByte() else 0.toByte()
+            if (micLedEnabled) 1.toByte() else 0.toByte()
 
         report[LED_BRIGHTNESS_INDEX] = config.playerLedBrightness.rawValue.toByte()
         report[PLAYER_LEDS_INDEX] =
-            ((config.playerLedMask and 0x1F) or PLAYER_LED_INSTANT_BIT).toByte()
+            (playerLedMask or PLAYER_LED_INSTANT_BIT).toByte()
 
         val scaledColor = scaleColor(lightbarColor, config.lightbarBrightnessPercent)
 

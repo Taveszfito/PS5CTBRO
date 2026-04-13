@@ -8,7 +8,8 @@ enum class LedEffect(@StringRes val titleRes: Int) {
     OFF(R.string.led_effect_off),
     STATIC(R.string.led_effect_static),
     BREATH(R.string.led_effect_breath),
-    COLOR_CYCLE(R.string.led_effect_color_cycle)
+    COLOR_CYCLE(R.string.led_effect_color_cycle),
+    MUSIC_REACTIVE(R.string.led_effect_music_reactive)
 }
 
 enum class PlayerLedBrightness(
