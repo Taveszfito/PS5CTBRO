@@ -70,10 +70,8 @@ class AudioControllerImpl private constructor(
 
         private const val OUTPUT_FRAME_BYTES = OUTPUT_CHANNELS * BYTES_PER_SAMPLE
 
-        private val CONTROLLER_VOLUME_STEPS = intArrayOf(
-            0x45, 0x4F, 0x59, 0x63, 0x6D,
-            0x77, 0x81, 0x8B, 0x95, 0x9F
-        )
+        // A kontroller belső erősítése mostantól fixen maximumon (0xFF) van.
+        private const val MAX_CONTROLLER_VOLUME = 0xFF
     }
 
     private val appContext = context.applicationContext
@@ -169,21 +167,27 @@ class AudioControllerImpl private constructor(
     }
 
     override fun setVolumeStep(step: Int) {
-        val clamped = step.coerceIn(0, CONTROLLER_VOLUME_STEPS.lastIndex)
+        // Step: 0..10. Gain: step / 10.0f
+        val clamped = step.coerceIn(0, 10)
+        val newGain = clamped / 10f
+        
         _uiState.update { current ->
             current.copy(
                 volumeStep = clamped,
-                logText = appContext.getString(R.string.label_volume_level, clamped + 1)
+                audioGain = newGain,
+                logText = appContext.getString(R.string.label_volume_level, clamped)
             )
         }
 
+        // HID report küldése (hogy a hangerő fixen 0xFF legyen ha elállítódott volna)
         scope.launch(Dispatchers.IO) {
             runSpeakerHid()
         }
     }
 
     override fun setAudioGain(gain: Float) {
-        _uiState.update { it.copy(audioGain = gain.coerceIn(0f, 1.5f)) }
+        // Ezt mostantól a setVolumeStep kezeli, de meghagyjuk az interfész kompatibilitás miatt
+        _uiState.update { it.copy(audioGain = gain.coerceIn(0f, 1.0f)) }
     }
 
     override fun setChannelEnabled(channel: Int, enabled: Boolean) {
@@ -462,8 +466,8 @@ class AudioControllerImpl private constructor(
         var outputIndex = 0
 
         val gain = _uiState.value.audioGain
-
         val state = _uiState.value
+
         val ch1Enabled = state.routeCh1
         val ch2Enabled = state.routeCh2
         val ch3Enabled = state.routeCh3
@@ -474,17 +478,23 @@ class AudioControllerImpl private constructor(
             val right = input[inputIndex++].toInt()
 
             val monoBase = (left + right) / 2
-            val amplified = (monoBase * gain).toInt()
+            val ampMono = (monoBase * gain).toInt()
                 .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 .toShort()
 
-            writeShortLe(output, outputIndex, if (ch1Enabled) amplified else 0)
+            // 1-es csatorna: halott / teszt csatorna
+            writeShortLe(output, outputIndex, if (ch1Enabled) ampMono else 0)
             outputIndex += 2
-            writeShortLe(output, outputIndex, if (ch2Enabled) amplified else 0)
+
+            // 2-es csatorna: beépített hangszóró
+            writeShortLe(output, outputIndex, if (ch2Enabled) ampMono else 0)
             outputIndex += 2
-            writeShortLe(output, outputIndex, if (ch3Enabled) amplified else 0)
+
+            // 3-4-es csatorna: motorok -> vissza mono jelre
+            writeShortLe(output, outputIndex, if (ch3Enabled) ampMono else 0)
             outputIndex += 2
-            writeShortLe(output, outputIndex, if (ch4Enabled) amplified else 0)
+
+            writeShortLe(output, outputIndex, if (ch4Enabled) ampMono else 0)
             outputIndex += 2
         }
     }
@@ -495,8 +505,8 @@ class AudioControllerImpl private constructor(
     }
 
     private fun currentControllerVolume(): Int {
-        val step = _uiState.value.volumeStep.coerceIn(0, CONTROLLER_VOLUME_STEPS.lastIndex)
-        return CONTROLLER_VOLUME_STEPS[step]
+        // Mostantól fixen 0xFF (MAX)
+        return MAX_CONTROLLER_VOLUME
     }
 
     private fun startSpeakerKeepAlive() {
@@ -551,18 +561,27 @@ class AudioControllerImpl private constructor(
 
         val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
 
-        report[0] = DS_OUTPUT_REPORT_USB.toByte()
-        report[1] = 0xB0.toByte()
-        report[2] = 0x82.toByte()
-        report[3] = 0x00
-        report[4] = 0x00
-        report[5] = 0x7F.toByte()
-        report[6] = controllerVolume.toByte()
-        report[7] = 0x40.toByte()
-        report[8] = 0x30.toByte()
+        report[7] = controllerVolume.toByte() // Mic Volume
+        report[8] = 0xFF.toByte()
         report[9] = 0x00
         report[10] = 0x00
-        report[39] = 0x03
+
+        // LED/lightbar init mezők is kellenek, mert ettől éled fel a motor
+        report[39] = 0x03.toByte()
+
+        // Lightbar setup = ON
+        report[42] = 0x02.toByte()
+
+        // Player LED brightness = HIGH
+        report[43] = 0x00.toByte()
+
+        // Center player LED + instant bit
+        report[44] = 0x24.toByte()
+
+        // Default static blue (ugyanaz, mint a LED default)
+        report[45] = 0x00.toByte()
+        report[46] = 0x72.toByte()
+        report[47] = 0xFF.toByte()
 
         val ok1 = controller.send(report)
         SystemClock.sleep(20)

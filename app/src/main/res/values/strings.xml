@@ -66,7 +66,7 @@
     <string name="label_mute_phone">Mute phone while streaming</string>
     <string name="label_hw_volume_control">Hardware volume buttons control controller</string>
     <string name="content_desc_volume_info">Volume Information</string>
-    <string name="volume_info_text">If you plug a standard jack connector into the controller, the playback volume on the external speaker will be much louder.</string>
+    <string name="volume_info_text">If you plug a standard jack connector into the controller, the playback volume on the external speaker will be much louder. (Still working on how to get this volume without the jack)</string>
     <string name="card_title_settings">Settings</string>
     <string name="label_effect_type">Effect Type</string>
     <string name="label_start_point">Start Point</string>
@@ -181,4 +181,8 @@
     <string name="card_title_audio_gain">Audio Gain</string>
     <string name="label_gain_value">Gain: %1$.2f</string>
     <string name="gain_description">Adjust the digital amplification for the system audio streaming.</string>
+    <string name="msg_volume_distortion">! Volume distortion may occur !</string>
+
+    <string name="dialog_info_title">Troubleshooting</string>
+    <string name="dialog_info_body">If the stream doesn’t start:\n\n• Make sure all required permissions are granted\n• Ensure battery optimization is not restricting the app in the background\n\nAlways start the stream in full screen mode, not by capturing a single app.\n\nIf there is still no sound:\n\n• Reconnect the controller\n• Press "Apply Speaker Route" before starting\n• Then try starting the stream again</string>
 </resources>
