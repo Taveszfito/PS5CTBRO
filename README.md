@@ -9,7 +9,7 @@ This project started as a simple experiment to see how much of the DualSense can
 ## ✨ Features
 
 - 🎮 Adaptive Trigger control  
-- 🔊 Controller speaker (live audio streaming)  
+- 🔊 Controller speaker testing (live audio streaming)  
 - 📳 Haptics / vibration testing  
 - 🌈 Light bar + player LEDs control  
 - 🎯 Full input test (buttons, sticks, triggers)  
