@@ -17,8 +17,12 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
+import android.media.MediaMetadata
+import android.media.VolumeProvider
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.os.Build
 import android.os.Process
 import android.os.SystemClock
@@ -83,6 +87,9 @@ class AudioControllerImpl private constructor(
     private val _uiState = MutableStateFlow(AudioUiState())
     override val uiState: StateFlow<AudioUiState> = _uiState
 
+    override val sessionToken: MediaSession.Token?
+        get() = mediaSession?.sessionToken
+
     private var dualSense: DualSenseUsbController? = null
     private var mediaProjection: MediaProjection? = null
     private var audioRecord: AudioRecord? = null
@@ -95,6 +102,9 @@ class AudioControllerImpl private constructor(
 
     private var savedMusicVolumeBeforeMute: Int? = null
     private var phoneMutedByApp = false
+
+    private var mediaSession: MediaSession? = null
+    private var volumeProvider: VolumeProvider? = null
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -179,6 +189,9 @@ class AudioControllerImpl private constructor(
             )
         }
 
+        // Notify MediaSession's VolumeProvider of the new volume
+        volumeProvider?.currentVolume = clamped
+
         // HID report küldése (hogy a hangerő fixen 0xFF legyen ha elállítódott volna)
         scope.launch(Dispatchers.IO) {
             runSpeakerHid()
@@ -186,8 +199,22 @@ class AudioControllerImpl private constructor(
     }
 
     override fun setAudioGain(gain: Float) {
-        // Ezt mostantól a setVolumeStep kezeli, de meghagyjuk az interfész kompatibilitás miatt
-        _uiState.update { it.copy(audioGain = gain.coerceIn(0f, 1.0f)) }
+        val clamped = gain.coerceIn(0f, 1.0f)
+        val step = (clamped * 10).toInt()
+        
+        _uiState.update { current ->
+            current.copy(
+                audioGain = clamped,
+                volumeStep = step,
+                logText = appContext.getString(R.string.label_volume_level, step)
+            )
+        }
+        
+        volumeProvider?.currentVolume = step
+        
+        scope.launch(Dispatchers.IO) {
+            runSpeakerHid()
+        }
     }
 
     override fun setChannelEnabled(channel: Int, enabled: Boolean) {
@@ -218,13 +245,13 @@ class AudioControllerImpl private constructor(
         _uiState.update {
             it.copy(hardwareVolumeButtonsControlController = enabled)
         }
+        updateMediaSession()
     }
 
     override fun handleHardwareVolumeButton(direction: Int): Boolean {
         val state = _uiState.value
 
         if (!state.hardwareVolumeButtonsControlController) return false
-        if (!state.controllerConnected) return false
 
         when {
             direction > 0 -> setVolumeStep(state.volumeStep + 1)
@@ -360,6 +387,8 @@ class AudioControllerImpl private constructor(
                 schedulePhoneMuteForStreaming()
             }
 
+            updateMediaSession()
+
             appContext.getString(R.string.log_stream_started)
         } catch (t: Throwable) {
             Log.e(TAG, "Streaming start failed", t)
@@ -444,6 +473,8 @@ class AudioControllerImpl private constructor(
         _uiState.update { current ->
             current.copy(isStreaming = false)
         }
+
+        updateMediaSession()
     }
 
     private fun readExactly(record: AudioRecord, buffer: ShortArray, targetShortCount: Int): Int {
@@ -874,6 +905,126 @@ class AudioControllerImpl private constructor(
                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, restoreVolume, 0)
             } catch (_: Throwable) {
             }
+        }
+    }
+
+    private fun initMediaSession() {
+        if (mediaSession != null) return
+
+        mediaSession = MediaSession(appContext, "PS5CTBro_Audio").apply {
+
+            volumeProvider = object : VolumeProvider(
+                VolumeProvider.VOLUME_CONTROL_RELATIVE,
+                10,
+                _uiState.value.volumeStep
+            ) {
+                override fun onAdjustVolume(direction: Int) {
+                    handleHardwareVolumeButton(direction)
+                }
+
+                override fun onSetVolumeTo(volume: Int) {
+                    setVolumeStep(volume)
+                }
+            }
+
+            setPlaybackToRemote(volumeProvider!!)
+
+            setActive(true)
+        }
+    }
+
+    private fun updateMediaSession() {
+        val state = _uiState.value
+
+        if (state.isStreaming && state.hardwareVolumeButtonsControlController) {
+            if (mediaSession == null) {
+                mediaSession = MediaSession(appContext, "PS5CTBroVolumeControl").apply {
+                    setFlags(
+                        MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
+                                MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+                    )
+
+                    setCallback(object : MediaSession.Callback() {})
+
+                    setMetadata(
+                        MediaMetadata.Builder()
+                            .putString(MediaMetadata.METADATA_KEY_TITLE, "PS5 Controller")
+                            .putString(MediaMetadata.METADATA_KEY_ARTIST, "Active Stream")
+                            .build()
+                    )
+
+                    setPlaybackState(
+                        PlaybackState.Builder()
+                            .setState(
+                                PlaybackState.STATE_PLAYING,
+                                PlaybackState.PLAYBACK_POSITION_UNKNOWN,
+                                1.0f
+                            )
+                            .setActions(
+                                PlaybackState.ACTION_PLAY or
+                                        PlaybackState.ACTION_PAUSE or
+                                        PlaybackState.ACTION_PLAY_PAUSE or
+                                        PlaybackState.ACTION_STOP or
+                                        PlaybackState.ACTION_SKIP_TO_NEXT or
+                                        PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                            )
+                            .build()
+                    )
+
+                    val provider = object : VolumeProvider(
+                        VOLUME_CONTROL_ABSOLUTE,
+                        10,
+                        state.volumeStep
+                    ) {
+                        override fun onAdjustVolume(direction: Int) {
+                            if (direction != 0) {
+                                val handled = handleHardwareVolumeButton(direction)
+                                if (handled) {
+                                    currentVolume = _uiState.value.volumeStep
+                                }
+                            }
+                        }
+
+                        override fun onSetVolumeTo(volume: Int) {
+                            setVolumeStep(volume.coerceIn(0, 10))
+                            currentVolume = _uiState.value.volumeStep
+                        }
+                    }
+
+                    volumeProvider = provider
+                    setPlaybackToRemote(provider)
+                    isActive = true
+                }
+
+                Log.d(TAG, "MediaSession started with ABSOLUTE volume control")
+            } else {
+                mediaSession?.setPlaybackState(
+                    PlaybackState.Builder()
+                        .setState(
+                            PlaybackState.STATE_PLAYING,
+                            PlaybackState.PLAYBACK_POSITION_UNKNOWN,
+                            1.0f
+                        )
+                        .setActions(
+                            PlaybackState.ACTION_PLAY or
+                                    PlaybackState.ACTION_PAUSE or
+                                    PlaybackState.ACTION_PLAY_PAUSE or
+                                    PlaybackState.ACTION_STOP or
+                                    PlaybackState.ACTION_SKIP_TO_NEXT or
+                                    PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                        )
+                        .build()
+                )
+
+                volumeProvider?.currentVolume = state.volumeStep
+                mediaSession?.isActive = true
+            }
+        } else {
+            mediaSession?.isActive = false
+            mediaSession?.release()
+            mediaSession = null
+            volumeProvider = null
+            Log.d(TAG, "MediaSession stopped")
         }
     }
 

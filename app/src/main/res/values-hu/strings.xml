@@ -160,6 +160,8 @@
     <string name="label_version">Verzió</string>
 
     <string name="card_title_audio_gain">Audio Erősítés (Gain)</string>
+    <string name="label_audio_gain">Erősítés</string>
+    <string name="card_title_audio_settings">Audio Beállítások</string>
     <string name="label_gain_value">Erősítés: %1$.2f</string>
     <string name="gain_description">Digitális hangerő erősítés beállítása a rendszerhang továbbításához.</string>
     <string name="msg_volume_distortion">! Hangerő torzulás megfigyelhető !</string>

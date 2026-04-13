@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
@@ -15,6 +16,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class MediaProjectionForegroundService : Service() {
@@ -35,6 +38,12 @@ class MediaProjectionForegroundService : Service() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_text_preparing)))
+        
+        // Listen to UI state changes to update notification with MediaSession token if needed
+        val controller = AudioControllerImpl.getInstance(this)
+        controller.uiState.onEach {
+            updateNotification()
+        }.launchIn(serviceScope)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -49,24 +58,6 @@ class MediaProjectionForegroundService : Service() {
                 }
 
                 if (resultCode != 0 && data != null) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                        } else {
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                        }
-                        
-                        startForeground(
-                            NOTIFICATION_ID,
-                            buildNotification(getString(R.string.notification_text_active)),
-                            serviceType
-                        )
-                    } else {
-                        startForeground(
-                            NOTIFICATION_ID,
-                            buildNotification(getString(R.string.notification_text_active))
-                        )
-                    }
                     startStreaming(resultCode, data)
                 }
             }
@@ -83,6 +74,32 @@ class MediaProjectionForegroundService : Service() {
         val controller = AudioControllerImpl.getInstance(this)
         serviceScope.launch {
             controller.startSystemAudioStreaming(this@MediaProjectionForegroundService, resultCode, data)
+            updateNotification()
+        }
+    }
+
+    private fun updateNotification() {
+        val controller = AudioControllerImpl.getInstance(this)
+        val isStreaming = controller.uiState.value.isStreaming
+        val text = if (isStreaming) getString(R.string.notification_text_active) else getString(R.string.notification_text_preparing)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isStreaming) {
+            val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            }
+            
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(text),
+                serviceType
+            )
+        } else {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(text)
+            )
         }
     }
 
@@ -99,13 +116,23 @@ class MediaProjectionForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun buildNotification(text: String): Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val controller = AudioControllerImpl.getInstance(this)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        // Attach MediaSession token to the notification for better background volume handling
+        controller.sessionToken?.let { token ->
+            builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle()
+                .setMediaSession(MediaSessionCompat.Token.fromToken(token)))
+        }
+
+        return builder.build()
     }
 
     private fun createNotificationChannel() {

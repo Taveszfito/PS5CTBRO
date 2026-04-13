@@ -190,6 +190,20 @@ class MainActivity : AppCompatActivity() {
         startService(serviceIntent)
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    if (viewModel.handleHardwareVolumeButton(+1)) return true
+                }
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    if (viewModel.handleHardwareVolumeButton(-1)) return true
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     private fun handleStopStreamClick() {
         val serviceIntent = Intent(this, MediaProjectionForegroundService::class.java).apply {
             action = MediaProjectionForegroundService.ACTION_STOP

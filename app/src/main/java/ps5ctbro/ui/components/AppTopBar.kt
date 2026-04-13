@@ -21,13 +21,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.AppSection
@@ -42,17 +47,23 @@ fun AppTopBar(
         title = {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
             )
         },
         navigationIcon = {
             IconButton(onClick = onMenuClick) {
                 Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = stringResource(R.string.content_desc_menu)
+                    contentDescription = stringResource(R.string.content_desc_menu),
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
-        }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+        )
     )
 }
 
@@ -63,89 +74,65 @@ fun AppDrawerContent(
     onCloseClick: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val drawerWidth = configuration.screenWidthDp.dp * 0.75f
+    val drawerWidth = configuration.screenWidthDp.dp * 0.8f
     val scrollState = rememberScrollState()
 
     ModalDrawerSheet(
-        modifier = Modifier.width(drawerWidth)
+        modifier = Modifier.width(drawerWidth),
+        drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .verticalScroll(scrollState)
+                .padding(horizontal = 12.dp)
         ) {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.Start
+                    .padding(vertical = 24.dp, horizontal = 12.dp)
             ) {
-                IconButton(onClick = onCloseClick) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = stringResource(R.string.content_desc_close)
+                Column {
+                    Text(
+                        text = "PS5CTBRO",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "DualSense Controller Tools",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                Text(
-                    text = stringResource(currentSection.titleRes),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
             }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(bottom = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
 
             AppSection.entries.forEach { section ->
-                DrawerMenuItem(
-                    title = stringResource(section.titleRes),
+                NavigationDrawerItem(
+                    label = {
+                        Text(
+                            text = stringResource(section.titleRes),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (currentSection == section) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
                     selected = currentSection == section,
-                    onClick = { onSectionSelected(section) }
+                    onClick = { onSectionSelected(section) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
             }
         }
     }
-}
-
-@Composable
-private fun DrawerMenuItem(
-    title: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val containerColor = if (selected) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        color = containerColor,
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(containerColor)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
-            )
-        }
-    }
-
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 12.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-    )
 }

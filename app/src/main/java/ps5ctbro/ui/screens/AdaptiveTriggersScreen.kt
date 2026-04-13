@@ -3,8 +3,8 @@ package com.DueBoysenberry1226.ps5ctbro.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,12 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +34,9 @@ import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerEffect
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
+import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 
 @Composable
 fun AdaptiveTriggersScreen(
@@ -114,7 +114,8 @@ private fun TriggerConfigCard(
     SectionCard(title = stringResource(R.string.card_title_settings)) {
         Text(
             text = stringResource(R.string.label_effect_type),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -142,25 +143,26 @@ private fun TriggerConfigCard(
             appliedConfig = uiState.rightTrigger
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 16.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
 
-        TriggerSliderRow(
+        AppSliderRow(
             label = stringResource(R.string.label_start_point),
-            value = config.startPercent,
-            valueText = "${config.startPercent}%",
+            value = config.startPercent.toFloat(),
             onValueChange = { newValue ->
-                onConfigChanged(config.copy(startPercent = newValue))
+                onConfigChanged(config.copy(startPercent = newValue.toInt()))
             }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        TriggerSliderRow(
+        AppSliderRow(
             label = stringResource(R.string.label_end_point),
-            value = config.endPercent,
-            valueText = "${config.endPercent}%",
+            value = config.endPercent.toFloat(),
             onValueChange = { newValue ->
-                onConfigChanged(config.copy(endPercent = newValue))
+                onConfigChanged(config.copy(endPercent = newValue.toInt()))
             }
         )
 
@@ -168,36 +170,27 @@ private fun TriggerConfigCard(
 
         when (config.effect) {
             AdaptiveTriggerEffect.RESISTANCE -> {
-                TriggerSliderRow(
+                AppSliderRow(
                     label = stringResource(R.string.label_resistance_strength),
-                    value = config.strengthPercent,
-                    valueText = "${config.strengthPercent}%",
+                    value = config.strengthPercent.toFloat(),
                     onValueChange = { newValue ->
-                        onConfigChanged(config.copy(strengthPercent = newValue))
+                        onConfigChanged(config.copy(strengthPercent = newValue.toInt()))
                     }
                 )
             }
 
             AdaptiveTriggerEffect.VIBRATION -> {
-                TriggerSliderRow(
+                AppSliderRow(
                     label = stringResource(R.string.label_vibration_speed),
-                    value = config.speedPercent,
-                    valueText = "${config.speedPercent}%",
+                    value = config.speedPercent.toFloat(),
                     onValueChange = { newValue ->
-                        onConfigChanged(config.copy(speedPercent = newValue))
+                        onConfigChanged(config.copy(speedPercent = newValue.toInt()))
                     }
                 )
             }
 
             AdaptiveTriggerEffect.OFF -> {
-                TriggerSliderRow(
-                    label = stringResource(R.string.label_resistance_strength),
-                    value = config.strengthPercent,
-                    valueText = "${config.strengthPercent}%",
-                    onValueChange = { newValue ->
-                        onConfigChanged(config.copy(strengthPercent = newValue))
-                    }
-                )
+                // Keep UI consistent but disabled or shown as neutral if needed
             }
         }
 
@@ -257,68 +250,18 @@ private fun EffectSelectorRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        EffectChip(
-            title = stringResource(AdaptiveTriggerEffect.RESISTANCE.titleRes),
+        FilterChip(
             selected = selectedEffect == AdaptiveTriggerEffect.RESISTANCE,
             onClick = { onEffectSelected(AdaptiveTriggerEffect.RESISTANCE) },
+            label = { Text(stringResource(AdaptiveTriggerEffect.RESISTANCE.titleRes)) },
             modifier = Modifier.weight(1f)
         )
 
-        EffectChip(
-            title = stringResource(AdaptiveTriggerEffect.VIBRATION.titleRes),
+        FilterChip(
             selected = selectedEffect == AdaptiveTriggerEffect.VIBRATION,
             onClick = { onEffectSelected(AdaptiveTriggerEffect.VIBRATION) },
+            label = { Text(stringResource(AdaptiveTriggerEffect.VIBRATION.titleRes)) },
             modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun EffectChip(
-    title: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier) {
-        FilterChip(
-            selected = selected,
-            onClick = onClick,
-            label = {
-                Text(title)
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun TriggerSliderRow(
-    label: String,
-    value: Int,
-    valueText: String,
-    onValueChange: (Int) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-
-        Slider(
-            value = value.toFloat(),
-            onValueChange = { onValueChange(it.toInt()) },
-            valueRange = 0f..100f
         )
     }
 }
@@ -329,67 +272,15 @@ private fun TriggerLogCard(
 ) {
     SectionCard(title = stringResource(R.string.card_title_log)) {
         Surface(
-            tonalElevation = 1.dp,
-            shape = CardDefaults.shape,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.medium
         ) {
             Text(
                 text = logText,
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-    }
-}
-
-@Composable
-private fun SectionCard(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            content()
-        }
-    }
-}
-
-@Composable
-private fun StatusRow(
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Surface(
-            tonalElevation = 1.dp
-        ) {
-            Text(
-                text = value,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                style = MaterialTheme.typography.titleMedium
+                modifier = Modifier.padding(14.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -411,12 +302,14 @@ private fun TriggerCompactBar(
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
                 text = "$pressedPercent%",
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
             )
         }
 
@@ -444,35 +337,35 @@ private fun CompactRangeBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(24.dp)
-            .clip(CardDefaults.shape)
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(clampedPressed / 100f)
                 .height(24.dp)
-                .clip(CardDefaults.shape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth((clampedEnd - clampedStart).coerceAtLeast(1) / 100f)
                 .height(24.dp)
-                .offset(x = (clampedStart * 3).dp)
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.35f))
+                .offset(x = (clampedStart * 3).dp) // This multiplier might be problematic on different screen widths, but keeping logic
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(24.dp)
-                .padding(horizontal = 10.dp),
+                .padding(horizontal = 8.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 text = "$clampedPressed%   |   $clampedStart% → $clampedEnd%",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

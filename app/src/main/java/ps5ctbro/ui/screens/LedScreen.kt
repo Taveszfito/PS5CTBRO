@@ -12,15 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,13 +24,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedColor
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedEffect
@@ -104,8 +101,6 @@ private fun LedStatusCard(
             value = if (controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-
         StatusRow(
             label = stringResource(R.string.label_active_mode),
             value = stringResource(currentEffectRes)
@@ -121,7 +116,8 @@ private fun LightbarCard(
     SectionCard(title = stringResource(R.string.card_title_lightbar)) {
         Text(
             text = stringResource(R.string.label_effect),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -138,7 +134,7 @@ private fun LightbarCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
+                .height(48.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .background(
                     Color(
@@ -151,67 +147,65 @@ private fun LightbarCard(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SliderRow(
+        AppSliderRow(
             label = stringResource(R.string.label_lightbar_brightness),
-            value = config.lightbarBrightnessPercent,
-            valueText = "${config.lightbarBrightnessPercent}%",
+            value = config.lightbarBrightnessPercent.toFloat(),
             onValueChange = { newValue ->
-                onConfigChanged(config.copy(lightbarBrightnessPercent = newValue))
+                onConfigChanged(config.copy(lightbarBrightnessPercent = newValue.toInt()))
             },
-            valueRange = 0..100
+            valueRange = 0f..100f
         )
 
         if (config.effect == LedEffect.BREATH || config.effect == LedEffect.COLOR_CYCLE) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            SliderRow(
+            AppSliderRow(
                 label = stringResource(R.string.label_effect_speed),
-                value = config.animationSpeedPercent,
-                valueText = "${config.animationSpeedPercent}%",
+                value = config.animationSpeedPercent.toFloat(),
                 onValueChange = { newValue ->
-                    onConfigChanged(config.copy(animationSpeedPercent = newValue))
+                    onConfigChanged(config.copy(animationSpeedPercent = newValue.toInt()))
                 },
-                valueRange = 0..100
+                valueRange = 0f..100f
             )
         }
 
         if (config.effect == LedEffect.STATIC || config.effect == LedEffect.BREATH) {
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(16.dp))
 
-            SliderRow(
+            AppSliderRow(
                 label = stringResource(R.string.label_red),
-                value = config.color.red,
-                valueText = "${config.color.red}",
+                value = config.color.red.toFloat(),
                 onValueChange = { newValue ->
-                    onConfigChanged(config.copy(color = config.color.copy(red = newValue)))
+                    onConfigChanged(config.copy(color = config.color.copy(red = newValue.toInt())))
                 },
-                valueRange = 0..255
+                valueRange = 0f..255f,
+                valueDisplay = config.color.red.toString()
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SliderRow(
+            AppSliderRow(
                 label = stringResource(R.string.label_green),
-                value = config.color.green,
-                valueText = "${config.color.green}",
+                value = config.color.green.toFloat(),
                 onValueChange = { newValue ->
-                    onConfigChanged(config.copy(color = config.color.copy(green = newValue)))
+                    onConfigChanged(config.copy(color = config.color.copy(green = newValue.toInt())))
                 },
-                valueRange = 0..255
+                valueRange = 0f..255f,
+                valueDisplay = config.color.green.toString()
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SliderRow(
+            AppSliderRow(
                 label = stringResource(R.string.label_blue),
-                value = config.color.blue,
-                valueText = "${config.color.blue}",
+                value = config.color.blue.toFloat(),
                 onValueChange = { newValue ->
-                    onConfigChanged(config.copy(color = config.color.copy(blue = newValue)))
+                    onConfigChanged(config.copy(color = config.color.copy(blue = newValue.toInt())))
                 },
-                valueRange = 0..255
+                valueRange = 0f..255f,
+                valueDisplay = config.color.blue.toString()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -233,7 +227,8 @@ private fun PlayerLedsCard(
     SectionCard(title = stringResource(R.string.card_title_player_leds)) {
         Text(
             text = stringResource(R.string.player_leds_description),
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -264,12 +259,13 @@ private fun PlayerLedsCard(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = stringResource(R.string.label_player_led_brightness),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -290,12 +286,13 @@ private fun PlayerLedsCard(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = stringResource(R.string.label_mic_led),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -333,7 +330,8 @@ private fun ActionsCard(
     SectionCard(title = stringResource(R.string.card_title_actions)) {
         Text(
             text = stringResource(R.string.actions_description),
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -450,93 +448,19 @@ private fun PresetColorChip(
 }
 
 @Composable
-private fun SliderRow(
-    label: String,
-    value: Int,
-    valueText: String,
-    onValueChange: (Int) -> Unit,
-    valueRange: IntRange
-) {
-    Text(
-        text = stringResource(R.string.label_slider_with_value, label, valueText),
-        style = MaterialTheme.typography.bodyLarge
-    )
-
-    Spacer(modifier = Modifier.height(6.dp))
-
-    Slider(
-        value = value.toFloat(),
-        onValueChange = { onValueChange(it.toInt()) },
-        valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
-        steps = (valueRange.last - valueRange.first - 1).coerceAtLeast(0),
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@Composable
 private fun LogCard(logText: String) {
     SectionCard(title = stringResource(R.string.card_title_log)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             shape = MaterialTheme.shapes.medium
         ) {
             Text(
                 text = logText,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(14.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun SectionCard(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            content()
-        }
-    }
-}
-
-@Composable
-private fun StatusRow(
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-
-        AssistChip(
-            onClick = {},
-            label = { Text(value) },
-            colors = AssistChipDefaults.assistChipColors()
-        )
     }
 }

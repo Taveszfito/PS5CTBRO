@@ -3,27 +3,23 @@ package com.DueBoysenberry1226.ps5ctbro.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
@@ -38,6 +34,11 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        AudioSettingsCard(
+            audioGain = uiState.audioGain,
+            onGainChanged = onGainChanged
+        )
+
         LanguageCard(
             currentLanguage = uiState.currentLanguage,
             onLanguageSelected = onLanguageSelected
@@ -50,11 +51,28 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun AudioSettingsCard(
+    audioGain: Float,
+    onGainChanged: (Float) -> Unit
+) {
+    SectionCard(title = stringResource(R.string.card_title_audio_settings)) {
+        AppSliderRow(
+            label = stringResource(R.string.label_audio_gain),
+            value = audioGain,
+            onValueChange = onGainChanged,
+            valueRange = 0f..1.0f,
+            steps = 20,
+            valueDisplay = "${(audioGain * 100).roundToInt()}%"
+        )
+    }
+}
+
+@Composable
 private fun LanguageCard(
     currentLanguage: String,
     onLanguageSelected: (String) -> Unit
 ) {
-    SettingsSectionCard(title = stringResource(R.string.card_title_language)) {
+    SectionCard(title = stringResource(R.string.card_title_language)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -78,50 +96,10 @@ private fun LanguageCard(
 
 @Composable
 private fun AboutCard(version: String) {
-    SettingsSectionCard(title = stringResource(R.string.card_title_about)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.label_version),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-
-            AssistChip(
-                onClick = {},
-                label = { Text(version) },
-                colors = AssistChipDefaults.assistChipColors()
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsSectionCard(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    SectionCard(title = stringResource(R.string.card_title_about)) {
+        StatusRow(
+            label = stringResource(R.string.label_version),
+            value = version
         )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            Spacer(modifier = Modifier.height(14.dp)) // This should be Spacer(modifier = Modifier.height(14.dp)) but preserving the structure
-
-            content()
-        }
     }
 }

@@ -9,24 +9,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +35,10 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
+import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSwitchRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 
 @Composable
 fun SpeakerScreen(
@@ -117,7 +113,8 @@ private fun StatusCard(
             IconButton(onClick = { showInfoDialog = true }) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "Status info"
+                    contentDescription = "Status info",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -130,7 +127,6 @@ private fun StatusCard(
                 stringResource(R.string.status_disconnected)
             }
         )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
         StatusRow(
             label = stringResource(R.string.label_stream),
             value = if (isStreaming) {
@@ -139,7 +135,6 @@ private fun StatusCard(
                 stringResource(R.string.status_stopped)
             }
         )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
         StatusRow(
             label = stringResource(R.string.label_volume),
             value = stringResource(R.string.label_volume_level, volumeStep)
@@ -213,29 +208,26 @@ private fun ChannelRoutesCard(
     onRouteCh4Changed: (Boolean) -> Unit
 ) {
     SectionCard(title = stringResource(R.string.card_title_audio_channels)) {
-        ChannelToggleRow(
-            title = stringResource(R.string.channel_1),
+        AppSwitchRow(
+            label = stringResource(R.string.channel_1),
             checked = routeCh1,
             onCheckedChange = onRouteCh1Changed
         )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
-        ChannelToggleRow(
-            title = stringResource(R.string.channel_speaker),
+        AppSwitchRow(
+            label = stringResource(R.string.channel_speaker),
             checked = routeCh2,
             onCheckedChange = onRouteCh2Changed
         )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
-        ChannelToggleRow(
-            title = stringResource(R.string.channel_vibration_left),
+        AppSwitchRow(
+            label = stringResource(R.string.channel_vibration_left),
             checked = routeCh3,
             onCheckedChange = onRouteCh3Changed
         )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
-        ChannelToggleRow(
-            title = stringResource(R.string.channel_vibration_right),
+        AppSwitchRow(
+            label = stringResource(R.string.channel_vibration_right),
             checked = routeCh4,
             onCheckedChange = onRouteCh4Changed
         )
@@ -256,46 +248,27 @@ private fun VolumeCard(
     SectionCard(
         title = stringResource(R.string.label_volume)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.label_volume_level, volumeStep),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-
-            if (isDistorted) {
-                Text(
-                    text = stringResource(R.string.msg_volume_distortion),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Red,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Slider(
+        AppSliderRow(
+            label = stringResource(R.string.label_volume),
             value = volumeStep.toFloat(),
             onValueChange = { rawValue ->
-                onVolumeStepChanged(
-                    rawValue.roundToInt().coerceIn(0, 10)
-                )
+                onVolumeStepChanged(rawValue.roundToInt().coerceIn(0, 10))
             },
             valueRange = 0f..10f,
             steps = 9,
-            modifier = Modifier.fillMaxWidth(),
-            colors = if (isDistorted) {
-                SliderDefaults.colors(
-                    thumbColor = Color.Red,
-                    activeTrackColor = Color.Red
-                )
-            } else {
-                SliderDefaults.colors()
-            }
+            valueDisplay = volumeStep.toString(),
+            isError = isDistorted
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        if (isDistorted) {
+            Text(
+                text = stringResource(R.string.msg_volume_distortion),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -317,19 +290,17 @@ private fun VolumeCard(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        ChannelToggleRow(
-            title = stringResource(R.string.label_mute_phone),
+        AppSwitchRow(
+            label = stringResource(R.string.label_mute_phone),
             checked = mutePhoneWhileStreaming,
             onCheckedChange = onMutePhoneWhileStreamingChanged
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-
-        ChannelToggleRow(
-            title = stringResource(R.string.label_hw_volume_control),
+        AppSwitchRow(
+            label = stringResource(R.string.label_hw_volume_control),
             checked = hardwareVolumeButtonsControlController,
             onCheckedChange = onHardwareVolumeButtonsControlControllerChanged
         )
@@ -341,104 +312,15 @@ private fun LogCard(logText: String) {
     SectionCard(title = stringResource(R.string.card_title_log)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             shape = MaterialTheme.shapes.medium
         ) {
             Text(
                 text = logText,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(14.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun SectionCard(
-    title: String,
-    titleTrailing: @Composable (() -> Unit)? = null,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (titleTrailing != null) {
-                    titleTrailing()
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            content()
-        }
-    }
-}
-
-@Composable
-private fun StatusRow(
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-
-        AssistChip(
-            onClick = {},
-            label = { Text(value) },
-            colors = AssistChipDefaults.assistChipColors()
-        )
-    }
-}
-
-@Composable
-private fun ChannelToggleRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(
-                value = checked,
-                onValueChange = onCheckedChange
-            ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
     }
 }

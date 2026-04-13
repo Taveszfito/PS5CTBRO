@@ -2,10 +2,12 @@ package com.DueBoysenberry1226.ps5ctbro.audio
 
 import android.content.Context
 import android.content.Intent
+import android.media.session.MediaSession
 import kotlinx.coroutines.flow.StateFlow
 
 interface AudioController {
     val uiState: StateFlow<AudioUiState>
+    val sessionToken: MediaSession.Token?
 
     fun createScreenCaptureIntent(): Intent
     suspend fun applySpeakerRoute()

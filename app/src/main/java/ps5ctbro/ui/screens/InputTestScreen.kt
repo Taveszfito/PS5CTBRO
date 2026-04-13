@@ -10,12 +10,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.StickState
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.TriggerState
@@ -39,49 +41,51 @@ fun InputTestScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        SectionCard(title = stringResource(R.string.label_connection)) {
+            StatusRow(
+                label = stringResource(R.string.label_controller),
+                value = if (uiState.controllerConnected) {
+                    stringResource(R.string.status_connected)
+                } else {
+                    stringResource(R.string.status_no_active_connection)
+                }
             )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(
-                    text = stringResource(R.string.label_connection),
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = uiState.logText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = uiState.rawReportInfo,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
 
-                Text(
-                    text = if (uiState.controllerConnected) {
-                        stringResource(R.string.status_connected)
-                    } else {
-                        stringResource(R.string.status_no_active_connection)
-                    },
-                    style = MaterialTheme.typography.bodyLarge
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onRefreshConnectionClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.button_refresh_short))
+                }
 
-                Text(
-                    text = uiState.logText,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Text(
-                    text = uiState.rawReportInfo,
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onRefreshConnectionClick) {
-                        Text(stringResource(R.string.button_refresh_short))
-                    }
-
-                    TextButton(onClick = onRefreshConnectionClick) {
-                        Text(stringResource(R.string.button_reopen))
-                    }
+                TextButton(
+                    onClick = onRefreshConnectionClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.button_reopen))
                 }
             }
         }
@@ -116,45 +120,33 @@ fun InputTestScreen(
 private fun PressedButtonsCard(
     buttons: List<String>
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+    SectionCard(title = stringResource(R.string.label_pressed_buttons)) {
+        if (buttons.isEmpty()) {
             Text(
-                text = stringResource(R.string.label_pressed_buttons),
-                style = MaterialTheme.typography.titleLarge
+                text = stringResource(R.string.msg_no_buttons_pressed),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        } else {
+            val rows = buttons.chunked(2)
 
-            if (buttons.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.msg_no_buttons_pressed),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                val rows = buttons.chunked(2)
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    rows.forEach { rowButtons ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowButtons.forEach { button ->
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text(button) },
-                                    modifier = Modifier.widthIn(min = 120.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rows.forEach { rowButtons ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowButtons.forEach { button ->
+                            AssistChip(
+                                onClick = {},
+                                label = { Text(button) },
+                                modifier = Modifier.weight(1f),
+                                colors = AssistChipDefaults.assistChipColors(
+                                    labelColor = MaterialTheme.colorScheme.primary
                                 )
-                            }
+                            )
                         }
                     }
                 }
@@ -168,36 +160,23 @@ private fun StickCard(
     title: String,
     stick: StickState
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    SectionCard(title = title) {
+        AxisLine(
+            label = "X",
+            rawValue = stick.rawX,
+            percentValue = stick.percentX
         )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge
-            )
 
-            AxisLine(
-                label = "X",
-                rawValue = stick.rawX,
-                percentValue = stick.percentX
-            )
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 12.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
 
-            HorizontalDivider()
-
-            AxisLine(
-                label = "Y",
-                rawValue = stick.rawY,
-                percentValue = stick.percentY
-            )
-        }
+        AxisLine(
+            label = "Y",
+            rawValue = stick.rawY,
+            percentValue = stick.percentY
+        )
     }
 }
 
@@ -207,16 +186,29 @@ private fun AxisLine(
     rawValue: Int,
     percentValue: Int
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = "$label: $percentValue%   (raw: $rawValue)",
-            style = MaterialTheme.typography.bodyLarge
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "$label: $percentValue%",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "raw: $rawValue",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
 
         val progress = ((percentValue + 100f) / 200f).coerceIn(0f, 1f)
         LinearProgressIndicator(
             progress = { progress },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
     }
 }
@@ -226,31 +218,28 @@ private fun TriggerCard(
     title: String,
     trigger: TriggerState
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+    SectionCard(title = title) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge
+                text = "${trigger.percent}%",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Text(
-                text = "${trigger.percent}%   (raw: ${trigger.rawValue})",
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-            LinearProgressIndicator(
-                progress = { (trigger.percent / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth()
+                text = "raw: ${trigger.rawValue}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.outline
             )
         }
+
+        LinearProgressIndicator(
+            progress = { (trigger.percent / 100f).coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     }
 }
