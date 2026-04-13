@@ -34,10 +34,6 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        AudioSettingsCard(
-            audioGain = uiState.audioGain,
-            onGainChanged = onGainChanged
-        )
 
         LanguageCard(
             currentLanguage = uiState.currentLanguage,
@@ -50,22 +46,6 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun AudioSettingsCard(
-    audioGain: Float,
-    onGainChanged: (Float) -> Unit
-) {
-    SectionCard(title = stringResource(R.string.card_title_audio_settings)) {
-        AppSliderRow(
-            label = stringResource(R.string.label_audio_gain),
-            value = audioGain,
-            onValueChange = onGainChanged,
-            valueRange = 0f..1.0f,
-            steps = 20,
-            valueDisplay = "${(audioGain * 100).roundToInt()}%"
-        )
-    }
-}
 
 @Composable
 private fun LanguageCard(
