@@ -5,6 +5,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
+import android.media.session.MediaController
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -58,6 +61,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Sync system volume UI with our MediaSession
+        lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                state.sessionToken?.let { token ->
+                    val controller = MediaController(this@MainActivity, token)
+                    setMediaController(controller)
+                } ?: run {
+                    setMediaController(null)
+                }
+            }
+        }
 
         setContent {
             PS5CTBroTheme {
@@ -119,19 +134,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (viewModel.handleHardwareVolumeButton(+1)) return true
-            }
-
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (viewModel.handleHardwareVolumeButton(-1)) return true
-            }
-        }
-
-        return super.onKeyDown(keyCode, event)
-    }
+    // Removed manual volume key interception to allow system to show the custom MediaSession volume slider
 
     private fun handleStartStreamClick() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -190,19 +193,7 @@ class MainActivity : AppCompatActivity() {
         startService(serviceIntent)
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_VOLUME_UP -> {
-                    if (viewModel.handleHardwareVolumeButton(+1)) return true
-                }
-                KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    if (viewModel.handleHardwareVolumeButton(-1)) return true
-                }
-            }
-        }
-        return super.dispatchKeyEvent(event)
-    }
+    // Removed manual volume key interception to allow system to show the custom MediaSession volume slider
 
     private fun handleStopStreamClick() {
         val serviceIntent = Intent(this, MediaProjectionForegroundService::class.java).apply {

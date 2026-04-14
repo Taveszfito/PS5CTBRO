@@ -117,19 +117,22 @@ class MediaProjectionForegroundService : Service() {
 
     private fun buildNotification(text: String): Notification {
         val controller = AudioControllerImpl.getInstance(this)
+        val uiState = controller.uiState.value
+        
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MAX) // Increased priority
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
         // Attach MediaSession token to the notification for better background volume handling
-        controller.sessionToken?.let { token ->
+        uiState.sessionToken?.let { token ->
             builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                .setMediaSession(MediaSessionCompat.Token.fromToken(token)))
+                .setMediaSession(MediaSessionCompat.Token.fromToken(token))
+                .setShowActionsInCompactView(0))
         }
 
         return builder.build()

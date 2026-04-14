@@ -1,5 +1,7 @@
 package com.DueBoysenberry1226.ps5ctbro.audio
 
+import android.media.session.MediaSession
+
 data class AudioUiState(
     val logText: String = "Ready | Hangerő: 3/10",
     val isStreaming: Boolean = false,
@@ -11,5 +13,6 @@ data class AudioUiState(
     val routeCh3: Boolean = false,
     val routeCh4: Boolean = false,
     val mutePhoneWhileStreaming: Boolean = true,
-    val hardwareVolumeButtonsControlController: Boolean = false
+    val hardwareVolumeButtonsControlController: Boolean = true,
+    val sessionToken: MediaSession.Token? = null
 )
