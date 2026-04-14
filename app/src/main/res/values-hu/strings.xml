@@ -4,8 +4,8 @@
     <string name="section_adaptive_triggers">Adaptive Triggerek</string>
     <string name="section_leds">LED vezérlés</string>
     <string name="section_input_test">Input Test</string>
+    <string name="section_vibrate_test">Rezgés teszt</string>
     <string name="section_settings">Beállítások</string>
-    <string name="section_debug">Debug</string>
     <string name="led_effect_off">Ki</string>
     <string name="led_effect_static">Statikus</string>
     <string name="led_effect_breath">Breath</string>
@@ -91,7 +91,26 @@
     <string name="label_right_stick">Jobb Stick</string>
     <string name="label_pressed_buttons">Lenyomott gombok</string>
     <string name="msg_no_buttons_pressed">Jelenleg nincs lenyomott gomb.</string>
-    <string name="placeholder_subtitle">Ez később kerül ide.</string>
+    <string name="label_vibration_strength_left">Bal motor erőssége</string>
+    <string name="label_vibration_strength_right">Jobb motor erőssége</string>
+    <string name="label_vibration_duration">Rezgés hossza</string>
+    <string name="duration_1s">1mp</string>
+    <string name="duration_5s">5mp</string>
+    <string name="duration_10s">10mp</string>
+    <string name="duration_custom">Egyedi érték %1$d mp</string>
+    <string name="label_infinite_vibration">Végtelen rezgés</string>
+    <string name="button_apply_left">ALKALMAZ BALRA</string>
+    <string name="button_apply_right">ALKALMAZ JOBBRA</string>
+    <string name="button_stop_vibration">REZEGÉS MEGÁLLÍTÁSA</string>
+    <string name="log_vibration_applied">Rezgés alkalmazva: %1$s.</string>
+    <string name="log_vibration_stopped">Rezgés megállítva.</string>
+    <string name="log_vibrate_screen_left">Rezgés képernyő elhagyva, HID kapcsolat elengedve.</string>
+    <string name="log_vibrate_control_ready">USB engedély megadva, rezgés vezérlés kész.</string>
+    <string name="vibration_side_left">Bal</string>
+    <string name="vibration_side_right">Jobb</string>
+    <string name="vibration_side_both">Mindkettő</string>
+
+
     <string name="log_usb_permission_denied">USB engedély elutasítva.</string>
     <string name="log_usb_permission_not_active">USB engedély megjött, de az Input Test oldal már nem aktív.</string>
     <string name="log_usb_permission_granted_ready">USB engedély megadva, Input Test kész.</string>

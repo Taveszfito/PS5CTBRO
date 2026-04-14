@@ -22,6 +22,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
+import com.DueBoysenberry1226.ps5ctbro.ui.vibrate.VibrationViewModel
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PS5CTBroTheme
@@ -32,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
     private val ledViewModel: LedViewModel by viewModels()
     private val inputTestViewModel: InputTestViewModel by viewModels()
+    private val vibrationViewModel: VibrationViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     private val recordAudioPermissionLauncher =
@@ -80,6 +82,7 @@ class MainActivity : AppCompatActivity() {
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
                 val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
                 val inputTestUiState by inputTestViewModel.uiState.collectAsStateWithLifecycle()
+                val vibrationUiState by vibrationViewModel.uiState.collectAsStateWithLifecycle()
                 val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
                 AppRoot(
@@ -87,6 +90,7 @@ class MainActivity : AppCompatActivity() {
                     adaptiveTriggersUiState = adaptiveTriggersUiState,
                     ledUiState = ledUiState,
                     inputTestUiState = inputTestUiState,
+                    vibrationUiState = vibrationUiState,
                     settingsUiState = settingsUiState,
                     onStartStreamClick = ::handleStartStreamClick,
                     onStopStreamClick = ::handleStopStreamClick,
@@ -127,6 +131,16 @@ class MainActivity : AppCompatActivity() {
                     onInputTestScreenVisible = inputTestViewModel::onScreenVisible,
                     onInputTestScreenHidden = inputTestViewModel::onScreenHidden,
                     onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection,
+                    onVibrationScreenVisible = vibrationViewModel::onScreenVisible,
+                    onVibrationScreenHidden = vibrationViewModel::onScreenHidden,
+                    onVibrationStrengthLeftChanged = vibrationViewModel::setStrengthLeft,
+                    onVibrationStrengthRightChanged = vibrationViewModel::setStrengthRight,
+                    onVibrationDurationChanged = vibrationViewModel::setDuration,
+                    onVibrationInfiniteChanged = vibrationViewModel::setInfinite,
+                    onApplyVibrationLeft = { vibrationViewModel.applyVibration(left = true, right = false) },
+                    onApplyVibrationRight = { vibrationViewModel.applyVibration(left = false, right = true) },
+                    onStopVibrationClick = vibrationViewModel::stopVibration,
+                    onRefreshVibrationConnectionClick = vibrationViewModel::refreshConnection,
                     onLanguageSelected = settingsViewModel::setLanguage,
                     onGainChanged = settingsViewModel::setAudioGain
                 )

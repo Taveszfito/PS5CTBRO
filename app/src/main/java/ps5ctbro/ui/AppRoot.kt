@@ -31,10 +31,11 @@ import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
-import com.DueBoysenberry1226.ps5ctbro.ui.screens.PlaceholderScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SettingsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.VibrationScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
+import com.DueBoysenberry1226.ps5ctbro.ui.vibrate.VibrationUiState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,7 @@ fun AppRoot(
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
     ledUiState: LedUiState,
     inputTestUiState: InputTestUiState,
+    vibrationUiState: VibrationUiState,
     settingsUiState: SettingsUiState,
     onStartStreamClick: () -> Unit,
     onStopStreamClick: () -> Unit,
@@ -71,6 +73,16 @@ fun AppRoot(
     onInputTestScreenVisible: () -> Unit,
     onInputTestScreenHidden: () -> Unit,
     onRefreshInputTestConnectionClick: () -> Unit,
+    onVibrationScreenVisible: () -> Unit,
+    onVibrationScreenHidden: () -> Unit,
+    onVibrationStrengthLeftChanged: (Int) -> Unit,
+    onVibrationStrengthRightChanged: (Int) -> Unit,
+    onVibrationDurationChanged: (Int) -> Unit,
+    onVibrationInfiniteChanged: (Boolean) -> Unit,
+    onApplyVibrationLeft: () -> Unit,
+    onApplyVibrationRight: () -> Unit,
+    onStopVibrationClick: () -> Unit,
+    onRefreshVibrationConnectionClick: () -> Unit,
     onLanguageSelected: (String) -> Unit,
     onGainChanged: (Float) -> Unit
 ) {
@@ -84,6 +96,7 @@ fun AppRoot(
     val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
     val ledScreenVisible = currentSection == AppSection.LEDS
     val inputTestScreenVisible = currentSection == AppSection.INPUT_TEST
+    val vibrationScreenVisible = currentSection == AppSection.VIBRATE_TEST
 
     DisposableEffect(adaptiveScreenVisible) {
         if (adaptiveScreenVisible) {
@@ -123,6 +136,20 @@ fun AppRoot(
         onDispose {
             if (inputTestScreenVisible) {
                 onInputTestScreenHidden()
+            }
+        }
+    }
+
+    DisposableEffect(vibrationScreenVisible) {
+        if (vibrationScreenVisible) {
+            onVibrationScreenVisible()
+        } else {
+            onVibrationScreenHidden()
+        }
+
+        onDispose {
+            if (vibrationScreenVisible) {
+                onVibrationScreenHidden()
             }
         }
     }
@@ -213,18 +240,25 @@ fun AppRoot(
                             )
                         }
 
+                        AppSection.VIBRATE_TEST -> {
+                            VibrationScreen(
+                                uiState = vibrationUiState,
+                                onStrengthLeftChanged = onVibrationStrengthLeftChanged,
+                                onStrengthRightChanged = onVibrationStrengthRightChanged,
+                                onDurationChanged = onVibrationDurationChanged,
+                                onInfiniteChanged = onVibrationInfiniteChanged,
+                                onApplyLeft = onApplyVibrationLeft,
+                                onApplyRight = onApplyVibrationRight,
+                                onStopClick = onStopVibrationClick,
+                                onRefreshConnectionClick = onRefreshVibrationConnectionClick
+                            )
+                        }
+
                         AppSection.SETTINGS -> {
                             SettingsScreen(
                                 uiState = settingsUiState,
                                 onLanguageSelected = onLanguageSelected,
                                 onGainChanged = onGainChanged
-                            )
-                        }
-
-                        AppSection.DEBUG -> {
-                            PlaceholderScreen(
-                                title = stringResource(R.string.section_debug),
-                                subtitle = stringResource(R.string.placeholder_subtitle)
                             )
                         }
                     }

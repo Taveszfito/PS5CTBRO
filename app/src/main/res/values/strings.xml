@@ -4,8 +4,8 @@
     <string name="section_adaptive_triggers">Adaptive Triggers</string>
     <string name="section_leds">LED Control</string>
     <string name="section_input_test">Input Test</string>
+    <string name="section_vibrate_test">Vibration Test</string>
     <string name="section_settings">Settings</string>
-    <string name="section_debug">Debug</string>
     <string name="led_effect_off">Off</string>
     <string name="led_effect_static">Static</string>
     <string name="led_effect_breath">Breath</string>
@@ -91,7 +91,26 @@
     <string name="label_right_stick">Right Stick</string>
     <string name="label_pressed_buttons">Pressed Buttons</string>
     <string name="msg_no_buttons_pressed">No buttons are currently pressed.</string>
-    <string name="placeholder_subtitle">This will be here later.</string>
+    <string name="label_vibration_strength_left">Left Motor Strength</string>
+    <string name="label_vibration_strength_right">Right Motor Strength</string>
+    <string name="label_vibration_duration">Vibration Duration</string>
+    <string name="duration_1s">1s</string>
+    <string name="duration_5s">5s</string>
+    <string name="duration_10s">10s</string>
+    <string name="duration_custom">Custom: %1$d s</string>
+    <string name="label_infinite_vibration">Infinite Vibration</string>
+    <string name="button_apply_left">APPLY LEFT</string>
+    <string name="button_apply_right">APPLY RIGHT</string>
+    <string name="button_stop_vibration">STOP VIBRATION</string>
+    <string name="log_vibration_applied">Vibration applied to %1$s.</string>
+    <string name="log_vibration_stopped">Vibration stopped.</string>
+    <string name="log_vibrate_screen_left">Vibration screen left, HID connection released.</string>
+    <string name="log_vibrate_control_ready">USB permission granted, vibration control ready.</string>
+    <string name="vibration_side_left">Left</string>
+    <string name="vibration_side_right">Right</string>
+    <string name="vibration_side_both">Both</string>
+
+
     <string name="log_usb_permission_denied">USB permission denied.</string>
     <string name="log_usb_permission_not_active">USB permission granted, but Input Test screen is no longer active.</string>
     <string name="log_usb_permission_granted_ready">USB permission granted, Input Test ready.</string>
