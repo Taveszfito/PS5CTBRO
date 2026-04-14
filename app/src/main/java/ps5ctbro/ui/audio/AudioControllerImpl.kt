@@ -1,14 +1,14 @@
 package com.DueBoysenberry1226.ps5ctbro.audio
 
+import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
+import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedControllerImpl
-import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
 import kotlinx.coroutines.isActive
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
@@ -76,7 +76,6 @@ class AudioControllerImpl private constructor(
 
         private const val OUTPUT_FRAME_BYTES = OUTPUT_CHANNELS * BYTES_PER_SAMPLE
 
-        // A kontroller belső erősítése mostantól fixen maximumon (0xFF) van.
         private const val MAX_CONTROLLER_VOLUME = 0xFF
     }
 
@@ -110,6 +109,7 @@ class AudioControllerImpl private constructor(
     private var volumeProvider: VolumeProvider? = null
     private var dominanceJob: Job? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var inputJob: Job? = null
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -193,10 +193,8 @@ class AudioControllerImpl private constructor(
             )
         }
 
-        // Update VolumeProvider immediately
         volumeProvider?.currentVolume = clamped
         
-        // Push update to system
         mediaSession?.let { session ->
             if (session.isActive) {
                 val state = PlaybackState.Builder()
@@ -350,7 +348,6 @@ class AudioControllerImpl private constructor(
             return appContext.getString(R.string.log_media_projection_create_failed)
         }
 
-        // Add callback to detect when it stops
         projection.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
                 Log.w(TAG, "MediaProjection STOPPED!")
@@ -422,7 +419,7 @@ class AudioControllerImpl private constructor(
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
 
             val payloadSize = 384
-            val packetsPerUrb = 32 // Megemeltük 12-ről a stabilitásért
+            val packetsPerUrb = 32
             val chunkBytes = payloadSize * packetsPerUrb
             val framesPerChunk = chunkBytes / OUTPUT_FRAME_BYTES
             val inputShortsPerChunk = framesPerChunk * INPUT_CHANNELS
@@ -448,32 +445,6 @@ class AudioControllerImpl private constructor(
             } finally {
                 Log.i(TAG, "Streaming pipeline stopped")
             }
-        }
-    }
-
-    private fun sendStaticBlueLed() {
-        val device = findDualSenseDevice() ?: return
-        if (!usbManager.hasPermission(device)) return
-
-        val controller = ensureController() ?: return
-
-        val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
-        report[0] = DS_OUTPUT_REPORT_USB.toByte()
-
-        report[2] = (0x04 or 0x10 or 0x01).toByte()
-        report[39] = (0x01 or 0x02).toByte()
-
-        report[42] = 0x02.toByte()
-        report[43] = 0xFF.toByte()
-        report[44] = (0x20 or 0b00100).toByte()
-
-        report[45] = 0x00.toByte()
-        report[46] = 0x00.toByte()
-        report[47] = 0xFF.toByte()
-
-        try {
-            controller.send(report)
-        } catch (_: SecurityException) {
         }
     }
 
@@ -555,15 +526,12 @@ class AudioControllerImpl private constructor(
                 .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 .toShort()
 
-            // 1-es csatorna: Engedélyezzük a mono jelet a hangerő növeléséhez, ha az UI-ban be van kapcsolva
             writeShortLe(output, outputIndex, if (ch1Enabled) ampMono else 0)
             outputIndex += 2
 
-            // 2-es csatorna: beépített hangszóró
             writeShortLe(output, outputIndex, if (ch2Enabled) ampMono else 0)
             outputIndex += 2
 
-            // 3-4-es csatorna: motorok -> vissza mono jelre
             writeShortLe(output, outputIndex, if (ch3Enabled) ampMono else 0)
             outputIndex += 2
 
@@ -591,7 +559,6 @@ class AudioControllerImpl private constructor(
     }
 
     private fun currentControllerVolume(): Int {
-        // Mostantól fixen 0xFF (MAX)
         return MAX_CONTROLLER_VOLUME
     }
 
@@ -608,6 +575,51 @@ class AudioControllerImpl private constructor(
     private fun stopSpeakerKeepAlive() {
         speakerKeepAliveJob?.cancel()
         speakerKeepAliveJob = null
+    }
+
+    private fun startInputReading() {
+        if (_uiState.value.isStreaming) return // Ne zavarjuk az audio streamet HID pollinggal
+
+        inputJob?.cancel()
+        inputJob = scope.launch(Dispatchers.IO) {
+            val buffer = ByteArray(64)
+            while (isActive) {
+                val controller = dualSense ?: break
+                // Ha közben elindult a streaming, álljunk le
+                if (_uiState.value.isStreaming) break
+
+                val read = controller.receive(buffer, 20)
+                if (read > 0) {
+                    parseInputReport(buffer)
+                } else {
+                    kotlinx.coroutines.delay(10) // Kicsit ritkább polling
+                }
+            }
+        }
+    }
+
+    private fun stopInputReading() {
+        inputJob?.cancel()
+        inputJob = null
+    }
+
+    private fun parseInputReport(report: ByteArray) {
+        if (report.size < 40) return
+
+        val t1Active = (report[33].toInt() and 0x80) == 0
+        val t1X = ((report[35].toInt() and 0x0F) shl 8) or (report[34].toInt() and 0xFF)
+        val t1Y = ((report[36].toInt() and 0xFF) shl 4) or ((report[35].toInt() and 0xF0) shr 4)
+
+        val t2Active = (report[37].toInt() and 0x80) == 0
+        val t2X = ((report[39].toInt() and 0x0F) shl 8) or (report[38].toInt() and 0xFF)
+        val t2Y = ((report[40].toInt() and 0xFF) shl 4) or ((report[39].toInt() and 0xF0) shr 4)
+
+        _uiState.update { current ->
+            current.copy(
+                touch1 = TouchpadPoint(x = t1X, y = t1Y, isActive = t1Active),
+                touch2 = TouchpadPoint(x = t2X, y = t2Y, isActive = t2Active)
+            )
+        }
     }
 
     private fun createPlaybackCaptureRecord(projection: MediaProjection): AudioRecord? {
@@ -630,7 +642,6 @@ class AudioControllerImpl private constructor(
             AudioFormat.ENCODING_PCM_16BIT
         )
 
-        // Using a larger buffer for streaming stability
         val desiredBufferBytes = maxOf(minBufferBytes, 64 * 1024)
 
         return AudioRecord.Builder()
@@ -662,9 +673,6 @@ class AudioControllerImpl private constructor(
 
         val ok = controller.send(report)
         
-        // JAVÍTÁS: Csak akkor állítsuk le a kapcsolatot, ha NEM streamelünk.
-        // Streamelés közben a HID hívás gyakran hibára fut (foglalt USB busz), 
-        // de ettől még a kontroller csatlakozva van.
         if (!ok && !_uiState.value.isStreaming) {
             setControllerConnected(false)
         }
@@ -984,70 +992,78 @@ class AudioControllerImpl private constructor(
     }
 
     private fun updateMediaSession() {
-        val state = _uiState.value
-        val shouldBeActive = state.hardwareVolumeButtonsControlController && state.controllerConnected
+        scope.launch(Dispatchers.Main.immediate) {
+            val state = _uiState.value
+            val shouldBeActive = state.hardwareVolumeButtonsControlController && state.controllerConnected
 
-        if (shouldBeActive) {
-            if (mediaSession == null) {
-                mediaSession = MediaSession(appContext, "PS5CTBroVolumeControl").apply {
-                    setCallback(object : MediaSession.Callback() {
-                        override fun onPlay() { isActive = true }
-                    })
+            if (shouldBeActive) {
+                if (mediaSession == null) {
+                    mediaSession = MediaSession(appContext, "PS5CTBroVolumeControl").apply {
+                        setCallback(object : MediaSession.Callback() {
+                            override fun onPlay() {
+                                isActive = true
+                            }
+                        })
+                    }
                 }
-            }
 
-            mediaSession?.setMetadata(
-                MediaMetadata.Builder()
-                    .putString(MediaMetadata.METADATA_KEY_TITLE, "DualSense Speaker")
-                    .putString(MediaMetadata.METADATA_KEY_ARTIST, "PS5CTBro")
-                    .build()
-            )
+                mediaSession?.setMetadata(
+                    MediaMetadata.Builder()
+                        .putString(MediaMetadata.METADATA_KEY_TITLE, "DualSense Speaker")
+                        .putString(MediaMetadata.METADATA_KEY_ARTIST, "PS5CTBro")
+                        .build()
+                )
 
-            mediaSession?.setPlaybackState(
-                PlaybackState.Builder()
-                    .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
-                    .setActions(PlaybackState.ACTION_PLAY)
-                    .build()
-            )
+                mediaSession?.setPlaybackState(
+                    PlaybackState.Builder()
+                        .setState(
+                            PlaybackState.STATE_PLAYING,
+                            PlaybackState.PLAYBACK_POSITION_UNKNOWN,
+                            1.0f
+                        )
+                        .setActions(PlaybackState.ACTION_PLAY)
+                        .build()
+                )
 
-            if (volumeProvider == null) {
-                volumeProvider = object : VolumeProvider(
-                    VOLUME_CONTROL_ABSOLUTE,
-                    10,
-                    state.volumeStep
-                ) {
-                    override fun onAdjustVolume(direction: Int) {
-                        if (direction != 0) {
-                            handleHardwareVolumeButton(direction)
+                if (volumeProvider == null) {
+                    volumeProvider = object : VolumeProvider(
+                        VOLUME_CONTROL_ABSOLUTE,
+                        10,
+                        state.volumeStep
+                    ) {
+                        override fun onAdjustVolume(direction: Int) {
+                            if (direction != 0) {
+                                handleHardwareVolumeButton(direction)
+                            }
+                        }
+
+                        override fun onSetVolumeTo(volume: Int) {
+                            setVolumeStep(volume.coerceIn(0, 10))
                         }
                     }
-                    override fun onSetVolumeTo(volume: Int) {
-                        setVolumeStep(volume.coerceIn(0, 10))
-                    }
+                    mediaSession?.setPlaybackToRemote(volumeProvider!!)
+                } else {
+                    volumeProvider?.currentVolume = state.volumeStep
                 }
-                mediaSession?.setPlaybackToRemote(volumeProvider!!)
+
+                mediaSession?.isActive = true
+
+                if (_uiState.value.sessionToken != mediaSession?.sessionToken) {
+                    _uiState.update { it.copy(sessionToken = mediaSession?.sessionToken) }
+                }
+
+                requestAudioFocus()
+                startDominanceJob()
             } else {
-                volumeProvider?.currentVolume = state.volumeStep
-            }
-
-            mediaSession?.isActive = true
-            
-            if (_uiState.value.sessionToken != mediaSession?.sessionToken) {
-                _uiState.update { it.copy(sessionToken = mediaSession?.sessionToken) }
-            }
-
-            requestAudioFocus()
-            // Reduced frequency to avoid fighting with system during projection start
-            startDominanceJob()
-        } else {
-            stopDominanceJob()
-            abandonAudioFocus()
-            if (mediaSession != null) {
-                mediaSession?.isActive = false
-                mediaSession?.release()
-                mediaSession = null
-                volumeProvider = null
-                _uiState.update { it.copy(sessionToken = null) }
+                stopDominanceJob()
+                abandonAudioFocus()
+                if (mediaSession != null) {
+                    mediaSession?.isActive = false
+                    mediaSession?.release()
+                    mediaSession = null
+                    volumeProvider = null
+                    _uiState.update { it.copy(sessionToken = null) }
+                }
             }
         }
     }
@@ -1061,14 +1077,12 @@ class AudioControllerImpl private constructor(
                     mediaSession?.let { session ->
                         if (!session.isActive) session.isActive = true
                         
-                        // Only re-request focus if NOT currently streaming
-                        // When streaming, MediaProjection already holds a high priority session
                         if (!state.isStreaming) {
                             requestAudioFocus()
                         }
                     }
                 }
-                kotlinx.coroutines.delay(2000) // Lower frequency
+                kotlinx.coroutines.delay(2000)
             }
         }
     }
@@ -1091,9 +1105,6 @@ class AudioControllerImpl private constructor(
                         .setAudioAttributes(attr)
                         .setAcceptsDelayedFocusGain(true)
                         .setOnAudioFocusChangeListener { focusChange ->
-                            if (focusChange != AudioManager.AUDIOFOCUS_GAIN) {
-                                // Lost focus? Grab it back next second in dominance job
-                            }
                         }
                         .build()
                 }
@@ -1128,5 +1139,11 @@ class AudioControllerImpl private constructor(
         Log.d(TAG, "setControllerConnected: $connected")
         _uiState.update { it.copy(controllerConnected = connected) }
         updateMediaSession()
+        
+        if (connected) {
+            startInputReading()
+        } else {
+            stopInputReading()
+        }
     }
 }

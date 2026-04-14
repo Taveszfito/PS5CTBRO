@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.inputtest
 
+import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
 import kotlinx.coroutines.flow.StateFlow
 
 data class StickState(
@@ -22,7 +23,9 @@ data class InputTestUiState(
     val r2: TriggerState = TriggerState(),
     val pressedButtons: List<String> = emptyList(),
     val logText: String = "Input Test készen áll.",
-    val rawReportInfo: String = "-"
+    val rawReportInfo: String = "-",
+    val touch1: TouchpadPoint = TouchpadPoint(),
+    val touch2: TouchpadPoint = TouchpadPoint()
 )
 
 interface InputTestController {

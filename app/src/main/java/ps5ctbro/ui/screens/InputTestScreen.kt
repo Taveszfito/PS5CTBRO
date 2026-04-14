@@ -1,11 +1,17 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,10 +25,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
 import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
@@ -90,6 +100,11 @@ fun InputTestScreen(
             }
         }
 
+        TouchpadCard(
+            touch1 = uiState.touch1,
+            touch2 = uiState.touch2
+        )
+
         StickCard(
             title = stringResource(R.string.label_left_stick),
             stick = uiState.leftStick
@@ -113,6 +128,82 @@ fun InputTestScreen(
         PressedButtonsCard(
             buttons = uiState.pressedButtons
         )
+    }
+}
+
+@Composable
+private fun TouchpadCard(
+    touch1: TouchpadPoint,
+    touch2: TouchpadPoint
+) {
+    SectionCard(title = "Touchpad") {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1920f / 1080f)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.small
+                    )
+            ) {
+                val primaryColor = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    if (touch1.isActive) {
+                        val x = (touch1.x / 1919f) * size.width
+                        val y = (touch1.y / 1079f) * size.height
+                        drawCircle(
+                            color = primaryColor,
+                            radius = 12.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+                    if (touch2.isActive) {
+                        val x = (touch2.x / 1919f) * size.width
+                        val y = (touch2.y / 1079f) * size.height
+                        drawCircle(
+                            color = secondaryColor,
+                            radius = 12.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TouchpadPointInfo(label = "T1", point = touch1)
+                TouchpadPointInfo(label = "T2", point = touch2)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TouchpadPointInfo(
+    label: String,
+    point: TouchpadPoint
+) {
+    Column {
+        Text(
+            text = "$label: ${if (point.isActive) "Aktív" else "Inaktív"}",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (point.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+        )
+        if (point.isActive) {
+            Text(
+                text = "X: ${point.x}, Y: ${point.y}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

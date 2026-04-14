@@ -10,11 +10,16 @@ import android.hardware.usb.UsbManager
 class DualSenseUsbController(
     private val connection: UsbDeviceConnection,
     private val usbInterface: UsbInterface,
-    private val outEndpoint: UsbEndpoint
+    private val outEndpoint: UsbEndpoint,
+    private val inEndpoint: UsbEndpoint
 ) {
     fun send(report: ByteArray): Boolean {
         val sent = connection.bulkTransfer(outEndpoint, report, report.size, 1000)
         return sent == report.size
+    }
+
+    fun receive(buffer: ByteArray, timeout: Int = 10): Int {
+        return connection.bulkTransfer(inEndpoint, buffer, buffer.size, timeout)
     }
 
     fun close() {
@@ -56,7 +61,13 @@ class DualSenseUsbController(
                     return null
                 }
 
-                return DualSenseUsbController(connection, targetInterface, outEndpoint)
+                val inEndpoint = findInEndpoint(targetInterface) ?: run {
+                    connection.releaseInterface(targetInterface)
+                    connection.close()
+                    return null
+                }
+
+                return DualSenseUsbController(connection, targetInterface, outEndpoint, inEndpoint)
             } catch (_: Throwable) {
                 try {
                     connection.close()
@@ -80,6 +91,14 @@ class DualSenseUsbController(
             for (i in 0 until intf.endpointCount) {
                 val ep = intf.getEndpoint(i)
                 if (ep.direction == UsbConstants.USB_DIR_OUT) return ep
+            }
+            return null
+        }
+
+        private fun findInEndpoint(intf: UsbInterface): UsbEndpoint? {
+            for (i in 0 until intf.endpointCount) {
+                val ep = intf.getEndpoint(i)
+                if (ep.direction == UsbConstants.USB_DIR_IN) return ep
             }
             return null
         }

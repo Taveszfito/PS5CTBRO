@@ -14,6 +14,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -404,6 +405,14 @@ class InputTestControllerImpl(
         val buttons1 = buffer[INPUT_OFFSET_BUTTONS_1].toUByte().toInt()
         val buttons2 = buffer[INPUT_OFFSET_BUTTONS_2].toUByte().toInt()
 
+        val t1Active = (buffer[33].toInt() and 0x80) == 0
+        val t1X = ((buffer[35].toInt() and 0x0F) shl 8) or (buffer[34].toInt() and 0xFF)
+        val t1Y = ((buffer[36].toInt() and 0xFF) shl 4) or ((buffer[35].toInt() and 0xF0) shr 4)
+
+        val t2Active = (buffer[37].toInt() and 0x80) == 0
+        val t2X = ((buffer[39].toInt() and 0x0F) shl 8) or (buffer[38].toInt() and 0xFF)
+        val t2Y = ((buffer[40].toInt() and 0xFF) shl 4) or ((buffer[39].toInt() and 0xF0) shr 4)
+
         val pressedButtons = buildPressedButtons(
             buttons0 = buttons0,
             buttons1 = buttons1,
@@ -436,7 +445,9 @@ class InputTestControllerImpl(
                 ),
                 pressedButtons = pressedButtons,
                 rawReportInfo = rawReportInfo,
-                logText = appContext.getString(R.string.log_input_stream_active)
+                logText = appContext.getString(R.string.log_input_stream_active),
+                touch1 = TouchpadPoint(x = t1X, y = t1Y, isActive = t1Active),
+                touch2 = TouchpadPoint(x = t2X, y = t2Y, isActive = t2Active)
             )
         }
     }
