@@ -84,8 +84,11 @@ fun AppRoot(
     onStopVibrationClick: () -> Unit,
     onRefreshVibrationConnectionClick: () -> Unit,
     onLanguageSelected: (String) -> Unit,
-    onGainChanged: (Float) -> Unit
+    onGainChanged: (Float) -> Unit,
+    onShowLogWindowsChanged: (Boolean) -> Unit
 ) {
+    val showLogs = settingsUiState.showLogWindows
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -208,7 +211,8 @@ fun AppRoot(
                                 onRouteCh4Changed = onRouteCh4Changed,
                                 onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
                                 onHardwareVolumeButtonsControlControllerChanged =
-                                    onHardwareVolumeButtonsControlControllerChanged
+                                    onHardwareVolumeButtonsControlControllerChanged,
+                                showLogs = showLogs
                             )
                         }
 
@@ -219,7 +223,8 @@ fun AppRoot(
                                 onRightTriggerChanged = onRightTriggerChanged,
                                 onApplyClick = onApplyTriggersClick,
                                 onRefreshConnectionClick = onRefreshTriggerConnectionClick,
-                                onResetClick = onResetTriggersClick
+                                onResetClick = onResetTriggersClick,
+                                showLogs = showLogs
                             )
                         }
 
@@ -236,7 +241,8 @@ fun AppRoot(
                         AppSection.INPUT_TEST -> {
                             InputTestScreen(
                                 uiState = inputTestUiState,
-                                onRefreshConnectionClick = onRefreshInputTestConnectionClick
+                                onRefreshConnectionClick = onRefreshInputTestConnectionClick,
+                                showLogs = showLogs
                             )
                         }
 
@@ -250,7 +256,8 @@ fun AppRoot(
                                 onApplyLeft = onApplyVibrationLeft,
                                 onApplyRight = onApplyVibrationRight,
                                 onStopClick = onStopVibrationClick,
-                                onRefreshConnectionClick = onRefreshVibrationConnectionClick
+                                onRefreshConnectionClick = onRefreshVibrationConnectionClick,
+                                showLogs = showLogs
                             )
                         }
 
@@ -258,7 +265,8 @@ fun AppRoot(
                             SettingsScreen(
                                 uiState = settingsUiState,
                                 onLanguageSelected = onLanguageSelected,
-                                onGainChanged = onGainChanged
+                                onGainChanged = onGainChanged,
+                                onShowLogWindowsChanged = onShowLogWindowsChanged
                             )
                         }
                     }

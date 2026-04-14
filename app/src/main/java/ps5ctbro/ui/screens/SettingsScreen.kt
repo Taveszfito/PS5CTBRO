@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSwitchRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
 import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
@@ -25,7 +26,8 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     uiState: SettingsUiState,
     onLanguageSelected: (String) -> Unit,
-    onGainChanged: (Float) -> Unit
+    onGainChanged: (Float) -> Unit,
+    onShowLogWindowsChanged: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -34,6 +36,11 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+
+        GeneralSettingsCard(
+            showLogs = uiState.showLogWindows,
+            onShowLogsChanged = onShowLogWindowsChanged
+        )
 
         LanguageCard(
             currentLanguage = uiState.currentLanguage,
@@ -46,6 +53,21 @@ fun SettingsScreen(
     }
 }
 
+
+@Composable
+private fun GeneralSettingsCard(
+    showLogs: Boolean,
+    onShowLogsChanged: (Boolean) -> Unit
+) {
+    SectionCard(title = stringResource(R.string.card_title_settings)) {
+        AppSwitchRow(
+            label = stringResource(R.string.label_show_log_windows),
+            subLabel = stringResource(R.string.desc_show_log_windows),
+            checked = showLogs,
+            onCheckedChange = onShowLogsChanged
+        )
+    }
+}
 
 @Composable
 private fun LanguageCard(

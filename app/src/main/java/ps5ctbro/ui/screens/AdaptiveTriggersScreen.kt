@@ -45,7 +45,8 @@ fun AdaptiveTriggersScreen(
     onRightTriggerChanged: (AdaptiveTriggerConfig) -> Unit,
     onApplyClick: () -> Unit,
     onRefreshConnectionClick: () -> Unit,
-    onResetClick: () -> Unit
+    onResetClick: () -> Unit,
+    showLogs: Boolean = false
 ) {
     var localConfig by remember { mutableStateOf(uiState.leftTrigger) }
 
@@ -85,9 +86,11 @@ fun AdaptiveTriggersScreen(
             onResetClick = onResetClick
         )
 
-        TriggerLogCard(
-            logText = uiState.logText
-        )
+        if (showLogs) {
+            TriggerLogCard(
+                logText = uiState.logText
+            )
+        }
     }
 }
 

@@ -142,7 +142,8 @@ class MainActivity : AppCompatActivity() {
                     onStopVibrationClick = vibrationViewModel::stopVibration,
                     onRefreshVibrationConnectionClick = vibrationViewModel::refreshConnection,
                     onLanguageSelected = settingsViewModel::setLanguage,
-                    onGainChanged = settingsViewModel::setAudioGain
+                    onGainChanged = settingsViewModel::setAudioGain,
+                    onShowLogWindowsChanged = settingsViewModel::setShowLogWindows
                 )
             }
         }

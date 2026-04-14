@@ -52,7 +52,8 @@ fun SpeakerScreen(
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
-    onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit
+    onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
+    showLogs: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -95,7 +96,9 @@ fun SpeakerScreen(
                 onHardwareVolumeButtonsControlControllerChanged
         )
 
-        LogCard(logText = uiState.logText)
+        if (showLogs) {
+            LogCard(logText = uiState.logText)
+        }
     }
 }
 

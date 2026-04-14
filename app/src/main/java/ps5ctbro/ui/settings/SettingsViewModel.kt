@@ -67,4 +67,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setAudioGain(gain: Float) {
         audioController.setAudioGain(gain)
     }
+
+    fun setShowLogWindows(show: Boolean) {
+        _uiState.update { it.copy(showLogWindows = show) }
+    }
 }

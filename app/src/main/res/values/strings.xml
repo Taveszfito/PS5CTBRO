@@ -45,9 +45,12 @@
     <string name="color_orange">Orange</string>
     <string name="content_desc_info">Info</string>
     <string name="label_stream">Stream</string>
+    <string name="label_volume">Volume</string>
     <string name="status_running">Running</string>
     <string name="status_stopped">Stopped</string>
-    <string name="label_volume">Volume</string>
+    <string name="label_show_log_windows">Show Log Windows</string>
+    <string name="desc_show_log_windows">Show or hide the log section on every screen</string>
+
     <string name="dialog_title_status_info">Status Information</string>
     <string name="status_info_text">If the stream doesn\'t start, check if all necessary permissions are granted and battery management is not restricting background activity.\n\nStart the stream in full screen mode, not by recording a single app.\n\nIf there\'s still no sound, reconnect the controller, press \"Apply Speaker Route\" before starting, and try again.</string>
     <string name="button_ok">OK</string>

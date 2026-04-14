@@ -26,7 +26,8 @@ fun VibrationScreen(
     onApplyLeft: () -> Unit,
     onApplyRight: () -> Unit,
     onStopClick: () -> Unit,
-    onRefreshConnectionClick: () -> Unit
+    onRefreshConnectionClick: () -> Unit,
+    showLogs: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -151,7 +152,7 @@ fun VibrationScreen(
             }
         }
 
-        if (uiState.logText.isNotEmpty()) {
+        if (showLogs && uiState.logText.isNotEmpty()) {
             SectionCard(title = stringResource(R.string.card_title_log)) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),

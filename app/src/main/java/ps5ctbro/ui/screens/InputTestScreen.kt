@@ -42,7 +42,8 @@ import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.TriggerState
 @Composable
 fun InputTestScreen(
     uiState: InputTestUiState,
-    onRefreshConnectionClick: () -> Unit
+    onRefreshConnectionClick: () -> Unit,
+    showLogs: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -61,22 +62,24 @@ fun InputTestScreen(
                 }
             )
 
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = uiState.logText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = uiState.rawReportInfo,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+            if (showLogs) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = uiState.logText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = uiState.rawReportInfo,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
 

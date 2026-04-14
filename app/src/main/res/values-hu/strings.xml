@@ -45,9 +45,12 @@
     <string name="color_orange">Narancs</string>
     <string name="content_desc_info">Infó</string>
     <string name="label_stream">Stream</string>
+    <string name="label_volume">Hangerő</string>
     <string name="status_running">Fut</string>
     <string name="status_stopped">Áll</string>
-    <string name="label_volume">Hangerő</string>
+    <string name="label_show_log_windows">Napló ablakok megjelenítése</string>
+    <string name="desc_show_log_windows">Napló rész megjelenítése vagy elrejtése minden oldalon</string>
+
     <string name="dialog_title_status_info">Állapot információ</string>
     <string name="status_info_text">Ha a stream nem indul el, ellenőrizd, hogy minden szükséges engedély meg van adva az alkalmazásnak, és az akkumulátor-kezelés nem korlátozza a háttérben futását.\n\nA streamet teljes képernyős (full screen) módban indítsd, ne egyetlen alkalmazás rögzítésével.\n\nHa továbbra sincs hang, csatlakoztasd újra a kontrollert, majd indítás előtt nyomd meg a „Speaker Route alkalmazása” gombot, és próbáld újra.</string>
     <string name="button_ok">OK</string>
