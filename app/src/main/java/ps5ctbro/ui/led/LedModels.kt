@@ -52,5 +52,6 @@ interface LedController {
     fun applyCurrentState()
     fun refreshConnection()
     fun resetToDefault()
+    fun sendWakeKick()
     fun release()
 }

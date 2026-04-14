@@ -1,6 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.audio
 
-
+import com.DueBoysenberry1226.ps5ctbro.ui.led.LedControllerImpl
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
 import kotlinx.coroutines.isActive
 import android.app.PendingIntent
@@ -384,6 +384,7 @@ class AudioControllerImpl private constructor(
 
             startSpeakerKeepAlive()
             startNewStreamingPipeline(record)
+            LedControllerImpl.getInstance(appContext).sendWakeKick()
 
             if (_uiState.value.mutePhoneWhileStreaming) {
                 schedulePhoneMuteForStreaming()
@@ -436,6 +437,32 @@ class AudioControllerImpl private constructor(
             } finally {
                 Log.i(TAG, "Streaming pipeline stopped")
             }
+        }
+    }
+
+    private fun sendStaticBlueLed() {
+        val device = findDualSenseDevice() ?: return
+        if (!usbManager.hasPermission(device)) return
+
+        val controller = ensureController() ?: return
+
+        val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+        report[0] = DS_OUTPUT_REPORT_USB.toByte()
+
+        report[2] = (0x04 or 0x10 or 0x01).toByte()
+        report[39] = (0x01 or 0x02).toByte()
+
+        report[42] = 0x02.toByte()
+        report[43] = 0xFF.toByte()
+        report[44] = (0x20 or 0b00100).toByte()
+
+        report[45] = 0x00.toByte()
+        report[46] = 0x00.toByte()
+        report[47] = 0xFF.toByte()
+
+        try {
+            controller.send(report)
+        } catch (_: SecurityException) {
         }
     }
 
@@ -517,7 +544,7 @@ class AudioControllerImpl private constructor(
                 .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 .toShort()
 
-            // 1-es csatorna: halott / teszt csatorna
+            // 1-es csatorna: Engedélyezzük a mono jelet a hangerő növeléséhez, ha az UI-ban be van kapcsolva
             writeShortLe(output, outputIndex, if (ch1Enabled) ampMono else 0)
             outputIndex += 2
 
@@ -560,9 +587,9 @@ class AudioControllerImpl private constructor(
     private fun startSpeakerKeepAlive() {
         speakerKeepAliveJob?.cancel()
         speakerKeepAliveJob = scope.launch(Dispatchers.IO) {
-            while (speakerKeepAliveJob?.isActive == true) {
+            while (isActive) {
                 runSpeakerHid()
-                SystemClock.sleep(90)
+                kotlinx.coroutines.delay(1000)
             }
         }
     }
@@ -604,45 +631,32 @@ class AudioControllerImpl private constructor(
 
     private fun runSpeakerHid(): String {
         val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
-
         val controllerVolume = currentControllerVolume()
-
         val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+        report[0] = DS_OUTPUT_REPORT_USB.toByte()
 
-        report[7] = controllerVolume.toByte() // Mic Volume
-        report[8] = 0xFF.toByte()
-        report[9] = 0x00
-        report[10] = 0x00
+        // BASELINE ÉBRESZTÉS ÉS VARÁZSKÓD SZEKVENCIA
+        // report[1]: 0xF3 (Minden engedélyezve)
+        // report[2]: 0x86 (0x82 Baseline + 0x04 Audio Setup a hangerőhöz)
+        // A 0x40 (Jack bit) elhagyva, mert elnémíthatja a hangszórót!
+        report[1] = 0xF3.toByte()
+        report[2] = 0x86.toByte()
+        
+        report[3] = 0x00
+        report[4] = 0x00
+        report[5] = 0xFF.toByte() // Max Master
+        report[6] = controllerVolume.toByte() // Speaker volume (UI követése)
+        report[7] = 0xFF.toByte() // Max Mic
+        report[8] = 0xFF.toByte() // Max Headphone
 
-        // LED/lightbar init mezők is kellenek, mert ettől éled fel a motor
-        report[39] = 0x03.toByte()
-
-        // Lightbar setup = ON
+        report[39] = 0x03.toByte() 
         report[42] = 0x02.toByte()
-
-        // Player LED brightness = HIGH
-        report[43] = 0x00.toByte()
-
-        // Center player LED + instant bit
         report[44] = 0x24.toByte()
 
-        // Default static blue (ugyanaz, mint a LED default)
-        report[45] = 0x00.toByte()
-        report[46] = 0x72.toByte()
-        report[47] = 0xFF.toByte()
+        val ok = controller.send(report)
+        setControllerConnected(ok)
 
-        val ok1 = controller.send(report)
-        SystemClock.sleep(20)
-        val ok2 = controller.send(report)
-
-        val connected = ok1 && ok2
-        setControllerConnected(connected)
-
-        return if (connected) {
-            appContext.getString(R.string.log_spk_hid_ok, controllerVolume.toString(16))
-        } else {
-            appContext.getString(R.string.log_spk_hid_fail)
-        }
+        return if (ok) "OK" else "Fail"
     }
 
     private fun openAudioRoute(device: UsbDevice): AudioRouteSession? {
@@ -738,7 +752,13 @@ class AudioControllerImpl private constructor(
         closeController()
         val controller = DualSenseUsbController.open(usbManager, device)
         dualSense = controller
-        setControllerConnected(controller != null)
+        
+        val success = controller != null
+        setControllerConnected(success)
+        if (success) {
+            setLog("DualSense csatlakoztatva")
+        }
+
         return controller
     }
 
@@ -961,7 +981,7 @@ class AudioControllerImpl private constructor(
                                 MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
                     )
 
-                    setCallback(object : MediaSession.Callback() {})
+                    setCallback(object : MediaSession.Callback() {}, android.os.Handler(android.os.Looper.getMainLooper()))
 
                     setMetadata(
                         MediaMetadata.Builder()
@@ -1050,6 +1070,7 @@ class AudioControllerImpl private constructor(
     }
 
     private fun setControllerConnected(connected: Boolean) {
+        Log.d(TAG, "setControllerConnected: $connected")
         _uiState.update { it.copy(controllerConnected = connected) }
     }
 }

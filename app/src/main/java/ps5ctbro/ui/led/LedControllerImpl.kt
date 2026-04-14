@@ -23,7 +23,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
 
-class LedControllerImpl(
+class LedControllerImpl private constructor(
     context: Context
 ) : LedController {
 
@@ -62,6 +62,15 @@ class LedControllerImpl(
         private const val LIGHTBAR_SETUP_LIGHT_ON = 0x02
 
         private const val PLAYER_LED_INSTANT_BIT = 0x20
+
+        @Volatile
+        private var INSTANCE: LedControllerImpl? = null
+
+        fun getInstance(context: Context): LedControllerImpl {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: LedControllerImpl(context.applicationContext).also { INSTANCE = it }
+            }
+        }
     }
 
     private val appContext = context.applicationContext
@@ -248,6 +257,55 @@ class LedControllerImpl(
 
         if (screenVisible) {
             applyConfig(defaultConfig, triggeredByUserChange = true)
+        }
+    }
+
+    override fun sendWakeKick() {
+        val device = findDualSenseDevice()
+        if (device == null) {
+            setConnectionState(false, appContext.getString(R.string.log_no_usb_dualsense))
+            return
+        }
+
+        if (!usbManager.hasPermission(device)) {
+            requestPermission(device)
+            setConnectionState(false, appContext.getString(R.string.log_dualsense_found_usb_permission))
+            return
+        }
+
+        if (hidHandle == null) {
+            reopenHandle(device)
+        }
+
+        val handle = hidHandle
+        if (handle == null) {
+            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
+            return
+        }
+
+        stopEffectLoop()
+
+        val wakeConfig = LedConfig(
+            effect = LedEffect.STATIC,
+            color = LedColor(0, 114, 255),
+            lightbarBrightnessPercent = 100,
+            animationSpeedPercent = 50,
+            playerLedBrightness = PlayerLedBrightness.HIGH,
+            playerLedMask = 0b00100,
+            micLedEnabled = false
+        )
+
+        val report = buildLedReport(
+            config = wakeConfig,
+            lightbarColor = wakeConfig.color,
+            lightbarEnabled = true
+        )
+
+        if (sendReport(handle, report)) {
+            setConnectionState(true, appContext.getString(R.string.log_static_led_applied))
+        } else {
+            closeHandle()
+            setConnectionState(false, appContext.getString(R.string.log_static_led_failed))
         }
     }
 

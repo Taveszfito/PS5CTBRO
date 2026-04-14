@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 class LedViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val controller: LedController = LedControllerImpl(application)
+    private val controller: LedController = LedControllerImpl.getInstance(application)
 
     val uiState: StateFlow<LedUiState> = controller.uiState
 
@@ -32,6 +32,10 @@ class LedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetToDefault() {
         controller.resetToDefault()
+    }
+
+    fun sendWakeKick() {
+        controller.sendWakeKick()
     }
 
     override fun onCleared() {
