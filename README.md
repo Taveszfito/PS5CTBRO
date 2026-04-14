@@ -1,4 +1,4 @@
-# PS5CTBro
+# PS5CTBRO
 
 An experimental Android app for testing and interacting with the PlayStation DualSense controller.
 
