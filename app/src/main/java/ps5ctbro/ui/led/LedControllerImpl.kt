@@ -88,6 +88,24 @@ class LedControllerImpl private constructor(
     private var lastBeatMs = 0L
     private var energyAccumulator = 0f
     private var rollingMaxLevel = 0.1f
+    
+    // Új változók a Disco 2.0-hoz
+    private var midEnergy = 0f
+    private var midPunch = 0f
+    private var highEnergy = 0f
+    private var colorShiftAccumulator = 0f
+    
+    // Színprofil kezelés
+    private var currentPaletteIndex = 0
+    private var lastPaletteSwitchMs = 0L
+    private val colorPalettes = arrayOf(
+        // baseHue, range (swing), name
+        floatArrayOf(235f, 90f),  // 0: Neon (Blue/Purple/Pink)
+        floatArrayOf(330f, 60f),  // 1: Cyber (Pink/Red/Orange)
+        floatArrayOf(180f, 70f),  // 2: Ocean (Cyan/Blue/Green)
+        floatArrayOf(45f, 50f),   // 3: Gold (Yellow/Orange/Red)
+        floatArrayOf(280f, 40f)   // 4: Deep (Purple/Blue)
+    )
 
     private val _uiState = MutableStateFlow(LedUiState(
         logText = appContext.getString(R.string.led_log_ready)
@@ -457,51 +475,81 @@ class LedControllerImpl private constructor(
                         val audioValue = audioController.audioLevelFlow.value
                         val now = SystemClock.elapsedRealtime()
 
-                        // 1. Rolling Peak Follower (Auto-Gain) finomítása
-                        // Lassabb lecsengés és magasabb "padló", hogy ne tekerje túl a halk részeket
-                        rollingMaxLevel = (rollingMaxLevel * 0.999f).coerceAtLeast(audioValue).coerceAtLeast(0.15f)
-                        
+                        // 1. Dinamikus Hangerő és Profil detektálás
+                        rollingMaxLevel = (rollingMaxLevel * 0.997f).coerceAtLeast(audioValue).coerceAtLeast(0.05f)
                         val normalized = (audioValue / rollingMaxLevel).coerceIn(0f, 1f)
                         
-                        // 2. Hibrid jelszint: Több súly az abszolút hangerőnek (0.3 -> 0.6)
-                        // Így a halk zene halkabb marad, a hangos pedig tényleg robban.
-                        val rawLevel = (normalized * 0.4f + audioValue * 0.6f).coerceIn(0f, 1.0f)
-                        
-                        val delta = (rawLevel - lastRawLevel).coerceAtLeast(0f)
-                        lastRawLevel = rawLevel
+                        // songIntensity: 0.0 (csöndes levezető) -> 1.0 (erőteljes zene)
+                        val songIntensity = (rollingMaxLevel.coerceIn(0.05f, 0.4f) - 0.05f) / 0.35f
+                        val isQuiet = songIntensity < 0.35f
 
-                        // 3. Simítás: Gyors attack, de természetesebb decay
-                        if (rawLevel > smoothedAudioLevel) {
-                            smoothedAudioLevel = smoothedAudioLevel * 0.05f + rawLevel * 0.95f
+                        // Változás sebessége
+                        val delta = (audioValue - lastRawLevel).coerceAtLeast(0f)
+                        lastRawLevel = audioValue
+                        
+                        // Energiák: Halk résznél lassabb lecsengés a folytonossághoz
+                        val energyDecay = if (isQuiet) 0.85f else 0.70f
+                        midEnergy = midEnergy * energyDecay + normalized * (1f - energyDecay)
+                        midPunch = midPunch * 0.55f + delta * 6.0f
+                        highEnergy = highEnergy * 0.40f + delta * 12.0f
+
+                        // 2. Simítás (Attack/Decay) - Halknál "pulzálóbb" (lassabb decay)
+                        val decayRate = if (isQuiet) 0.96f else 0.90f
+                        if (normalized > smoothedAudioLevel) {
+                            smoothedAudioLevel = smoothedAudioLevel * 0.45f + normalized * 0.55f
                         } else {
-                            // Ha halkul, kicsit gyorsabban ejtjük, hogy ne "ragadjon" be a LED
-                            smoothedAudioLevel = smoothedAudioLevel * 0.55f + rawLevel * 0.45f
+                            smoothedAudioLevel = smoothedAudioLevel * decayRate + normalized * (1f - decayRate)
                         }
 
-                        // 4. Ütem detektálás (Szigorúbb feltételek)
-                        val isBeat = (delta > 0.05f && rawLevel > 0.15f) && (now - lastBeatMs > 145)
+                        // 3. Ütem és DINAMIKUS SZÍN JÁTÉK
+                        val isBeat = (delta > 0.035f && normalized > 0.20f) && (now - lastBeatMs > 130)
+                        
+                        // SZÍNVÁLTÓ LOGIKA: Ha hosszú szünet van (>400ms) vagy eltelt 15mp
+                        val timeSinceLastSwitch = now - lastPaletteSwitchMs
+                        val isBreak = (now - lastBeatMs > 450) && (now - lastBeatMs < 2000)
+                        
+                        if ((isBreak && timeSinceLastSwitch > 3000) || timeSinceLastSwitch > 15000) {
+                            currentPaletteIndex = (currentPaletteIndex + 1) % colorPalettes.size
+                            lastPaletteSwitchMs = now
+                        }
 
                         if (isBeat) {
                             lastBeatMs = now
-                            musicHue = (musicHue + 30f + (normalized * 20f)) % 360f
                             flashIntensity = 1.0f
-                            beatDetectionThreshold = (beatDetectionThreshold * 0.4f + rawLevel * 0.6f).coerceIn(0.12f, 0.6f)
+                            
+                            // Ütemre hirtelen SZÍN-UGRÁS a palettán belül
+                            val jump = if (normalized > 0.7f) 80f else 35f
+                            colorShiftAccumulator += jump
                         } else {
-                            beatDetectionThreshold = (beatDetectionThreshold * 0.985f).coerceAtLeast(0.08f)
-                            flashIntensity *= 0.80f 
+                            flashIntensity *= if (isQuiet) 0.92f else 0.80f
+                            val hueDrift = (0.5f + midEnergy * 2.0f) * (if (isQuiet) 0.3f else 1.0f)
+                            colorShiftAccumulator += hueDrift
+                        }
+                        
+                        // Aktuális paletta alkalmazása
+                        val palette = colorPalettes[currentPaletteIndex]
+                        val baseHue = palette[0]
+                        val range = palette[1]
+                        
+                        val swingBase = java.lang.Math.sin(colorShiftAccumulator.toDouble() * 0.015).toFloat()
+                        var currentHue = (baseHue + swingBase * range).let { if (it < 0) it + 360 else it % 360 }
+                        
+                        // STROBE EFFECT: Nagyon erős ütemeknél invertáljuk vagy toljuk a színt
+                        if (flashIntensity > 0.85f && (now / 140) % 2 == 0L) {
+                            currentHue = (currentHue + 60f) % 360f
+                        }
+                        
+                        musicHue = currentHue
+                        
+                        musicSaturation = if (isQuiet) {
+                            (0.85f + smoothedAudioLevel * 0.15f).coerceIn(0.8f, 1f)
+                        } else {
+                            (0.50f + smoothedAudioLevel * 0.50f).coerceIn(0.4f, 1f)
                         }
 
-                        // Energia és Színforgás
-                        energyAccumulator = (energyAccumulator * 0.95f + rawLevel * 0.05f)
-                        val driftSpeed = 0.2f + (energyAccumulator * 4.0f)
-                        musicHue = (musicHue + driftSpeed) % 360f
-
-                        val targetSaturation = (0.5f + smoothedAudioLevel * 0.5f).coerceIn(0f, 1f)
-                        musicSaturation = musicSaturation * 0.90f + targetSaturation * 0.10f
-
-                        // Fényerő görbe
-                        val baseIntensity = (smoothedAudioLevel * 0.7f + (smoothedAudioLevel * smoothedAudioLevel) * 1.3f).coerceIn(0f, 1.0f)
-                        val finalIntensity = (baseIntensity + flashIntensity * 0.7f).coerceIn(0f, 2.5f)
+                        // 4. Fényerő görbe
+                        val baseIntensity = (smoothedAudioLevel * 0.4f + (smoothedAudioLevel * smoothedAudioLevel) * 1.3f).coerceIn(0.1f, 2.3f)
+                        val finalIntensity = (baseIntensity + flashIntensity * 1.0f).coerceIn(0f, 3.2f)
 
                         val hsvColor = hsvToRgb(musicHue, musicSaturation, 1f)
                         LedColor(
@@ -520,26 +568,61 @@ class LedControllerImpl private constructor(
 
                 val playerMaskForMusic =
                     if (config.effect == LedEffect.MUSIC_REACTIVE) {
-                        val level = smoothedAudioLevel
-                        val isFlash = now - lastBeatMs < 85
+                        var mask = 0
                         
-                        // Dinamikusabb és érzékenyebb Player LED maszk
-                        when {
-                            level > 0.40f || (isFlash && level > 0.25f) -> 0b11111 // 1-2-3-4-5
-                            level > 0.22f || (isFlash && level > 0.12f) -> 0b01110 // 2-3-4
-                            level > 0.07f || (isFlash && level > 0.03f) -> 0b00100 // Csak a 3.
-                            else -> 0b00000 
+                        // Profil újra-számolása a maszkhoz is (hogy konzisztens legyen)
+                        val songIntensity = (rollingMaxLevel.coerceIn(0.05f, 0.4f) - 0.05f) / 0.35f
+                        val isQuiet = songIntensity < 0.35f
+                        
+                        val sens = if (isQuiet) 0.50f else 1.0f
+                        
+                        // 1. Center LED (3) - Halknál lágyabb pulzálás
+                        val centerThreshold = if (isQuiet) 0.45f else 0.92f
+                        if (now - lastBeatMs < (if (isQuiet) 200 else 120) || smoothedAudioLevel > centerThreshold) {
+                            mask = mask or 0b00100
                         }
+                        
+                        // 2. Belső LED-ek (2 & 4) - Közép-ütések VAGY halk dallam
+                        if (midPunch > (0.75f * sens) || (isQuiet && midEnergy > 0.35f)) {
+                            mask = mask or 0b01010
+                        }
+                        
+                        // 3. Külső LED-ek (1 & 5) - Magas tranziensek
+                        if (highEnergy > (0.85f * sens)) {
+                            mask = mask or 0b10001
+                        }
+                        
+                        // Robbanás: Csak ha tényleg zúzás van
+                        if (!isQuiet && (midPunch > 0.95f || highEnergy > 1.4f)) {
+                            mask = 0b11111
+                        }
+                        
+                        mask
                     } else {
                         config.playerLedMask
                     }
 
                 val micLedForMusic =
                     if (config.effect == LedEffect.MUSIC_REACTIVE) {
-                        // A Mic LED most már a zene lüktetésére reagál (pergetés, éles hangok)
-                        (now - lastBeatMs < 50 && flashIntensity > 0.7f) || (smoothedAudioLevel > 0.60f)
+                        // A Mic LED most már kizárólag a magas frekvenciákra (highEnergy) reagál
+                        // Pl. pergődob ütés vagy éles cin hang esetén villan meg
+                        highEnergy > 0.65f || (now - lastBeatMs < 40 && highEnergy > 0.4f)
                     } else {
                         config.micLedEnabled
+                    }
+
+                val playerBrightnessForMusic =
+                    if (config.effect == LedEffect.MUSIC_REACTIVE) {
+                        // Dinamikus fényerő a hangerő alapján:
+                        // smoothedAudioLevel 0.0 -> 1.0 tartományban mozog
+                        // Low: 0x02, Medium: 0x01, High: 0x00
+                        when {
+                            smoothedAudioLevel > 0.75f -> 0 // High
+                            smoothedAudioLevel > 0.40f -> 1 // Medium
+                            else -> 2 // Low
+                        }
+                    } else {
+                        config.playerLedBrightness.rawValue
                     }
 
                 val snapshot = snapshotOf(
@@ -547,6 +630,7 @@ class LedControllerImpl private constructor(
                     color = color,
                     lightbarEnabled = lightbarEnabled,
                     playerLedMaskOverride = playerMaskForMusic,
+                    playerLedBrightnessOverride = playerBrightnessForMusic,
                     micLedEnabledOverride = micLedForMusic
                 )
 
@@ -556,6 +640,7 @@ class LedControllerImpl private constructor(
                         lightbarColor = color,
                         lightbarEnabled = lightbarEnabled,
                         playerLedMaskOverride = playerMaskForMusic,
+                        playerLedBrightnessOverride = playerBrightnessForMusic,
                         micLedEnabledOverride = micLedForMusic
                     )
 
@@ -641,6 +726,7 @@ class LedControllerImpl private constructor(
         color: LedColor,
         lightbarEnabled: Boolean,
         playerLedMaskOverride: Int? = null,
+        playerLedBrightnessOverride: Int? = null,
         micLedEnabledOverride: Boolean? = null
     ): LedSendSnapshot {
         return LedSendSnapshot(
@@ -650,7 +736,7 @@ class LedControllerImpl private constructor(
             blue = color.blue,
             lightbarBrightnessPercent = config.lightbarBrightnessPercent,
             animationSpeedPercent = config.animationSpeedPercent,
-            playerLedBrightnessRaw = config.playerLedBrightness.rawValue,
+            playerLedBrightnessRaw = playerLedBrightnessOverride ?: config.playerLedBrightness.rawValue,
             playerLedMaskRaw = (playerLedMaskOverride ?: config.playerLedMask) and 0x1F,
             micLedEnabled = micLedEnabledOverride ?: config.micLedEnabled,
             lightbarEnabled = lightbarEnabled
@@ -675,6 +761,7 @@ class LedControllerImpl private constructor(
         lightbarColor: LedColor,
         lightbarEnabled: Boolean,
         playerLedMaskOverride: Int? = null,
+        playerLedBrightnessOverride: Int? = null,
         micLedEnabledOverride: Boolean? = null
     ): ByteArray {
         val report = ByteArray(OUTPUT_REPORT_SIZE_USB)
@@ -699,11 +786,12 @@ class LedControllerImpl private constructor(
 
         val micLedEnabled = micLedEnabledOverride ?: config.micLedEnabled
         val playerLedMask = (playerLedMaskOverride ?: config.playerLedMask) and 0x1F
+        val playerBrightnessRaw = playerLedBrightnessOverride ?: config.playerLedBrightness.rawValue
 
         report[MUTE_BUTTON_LED_INDEX] =
             if (micLedEnabled) 1.toByte() else 0.toByte()
 
-        report[LED_BRIGHTNESS_INDEX] = config.playerLedBrightness.rawValue.toByte()
+        report[LED_BRIGHTNESS_INDEX] = playerBrightnessRaw.toByte()
         report[PLAYER_LEDS_INDEX] =
             (playerLedMask or PLAYER_LED_INSTANT_BIT).toByte()
 
