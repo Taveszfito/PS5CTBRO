@@ -24,8 +24,8 @@ object DualSenseTriggerReportBuilder {
     fun buildReport(
         left: AdaptiveTriggerConfig,
         right: AdaptiveTriggerConfig,
-        leftEnabled: Boolean = false,
-        rightEnabled: Boolean = false
+        leftStrength: Int = 0,
+        rightStrength: Int = 0
     ): ByteArray {
         val report = ByteArray(USB_REPORT_SIZE)
 
@@ -37,14 +37,14 @@ object DualSenseTriggerReportBuilder {
             report = report,
             offset = RIGHT_TRIGGER_OFFSET,
             config = right,
-            active = rightEnabled
+            currentStrength = rightStrength
         )
 
         writeTriggerBlock(
             report = report,
             offset = LEFT_TRIGGER_OFFSET,
             config = left,
-            active = leftEnabled
+            currentStrength = leftStrength
         )
 
         return report
@@ -54,22 +54,20 @@ object DualSenseTriggerReportBuilder {
         report: ByteArray,
         offset: Int,
         config: AdaptiveTriggerConfig,
-        active: Boolean
+        currentStrength: Int
     ) {
         for (i in 0 until TRIGGER_BLOCK_SIZE) {
             report[offset + i] = 0x00
         }
 
-        // Javítás: Minden effektnél figyelembe vesszük az 'active' állapotot, 
-        // amit az AdaptiveTriggerControllerImpl számol ki élő adatok alapján.
-        if (config.effect == AdaptiveTriggerEffect.OFF || !active) {
+        if (config.effect == AdaptiveTriggerEffect.OFF || currentStrength <= 0) {
             report[offset] = MODE_OFF.toByte()
             return
         }
 
         when (config.effect) {
-            AdaptiveTriggerEffect.RESISTANCE -> writeResistance(report, offset, config)
-            AdaptiveTriggerEffect.VIBRATION -> writeMachine(report, offset, config)
+            AdaptiveTriggerEffect.RESISTANCE -> writeResistance(report, offset, config, currentStrength)
+            AdaptiveTriggerEffect.VIBRATION -> writeMachine(report, offset, config) // Vibrációnál egyelőre marad a fix
             else -> report[offset] = MODE_OFF.toByte()
         }
     }
@@ -77,18 +75,16 @@ object DualSenseTriggerReportBuilder {
     private fun writeResistance(
         report: ByteArray,
         offset: Int,
-        config: AdaptiveTriggerConfig
+        config: AdaptiveTriggerConfig,
+        currentStrength: Int
     ) {
-        val start = percentToByte(config.startPercent)
-        val end = percentToByte(config.endPercent)
-        val strength = percentToByte(config.strengthPercent)
+        // Átváltunk MODE_CONTINUOUS (0x01) módra, mert ez stabilabban kezeli az erőt.
+        // Mivel szoftveresen kapuzzuk, így is szekcióként fog viselkedni.
+        val strength = percentToByte(currentStrength)
 
-        // A MODE_SECTION (0x02) hardveresen kezeli a tartományt, de az app-szintű 
-        // 'active' kapcsolás (writeTriggerBlock-ban) extra pontosságot ad.
-        report[offset + 0] = MODE_SECTION.toByte()
-        report[offset + 1] = start.toByte()
-        report[offset + 2] = end.toByte()
-        report[offset + 3] = strength.toByte()
+        report[offset + 0] = 0x01.toByte() // Continuous Resistance
+        report[offset + 1] = 0.toByte()    // Start position (szoftveresen vezérelve)
+        report[offset + 2] = strength.toByte() // Force/Strength
     }
 
     private fun writeMachine(

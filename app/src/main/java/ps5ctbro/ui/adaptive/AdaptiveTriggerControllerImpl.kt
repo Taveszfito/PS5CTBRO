@@ -46,8 +46,12 @@ class AdaptiveTriggerControllerImpl(
     @Volatile private var inputReaderRunning = false
     private var inputReaderThread: Thread? = null
 
-    @Volatile private var lastLeftActive = false
-    @Volatile private var lastRightActive = false
+    private var lastLeftRaw = 0
+    private var lastRightRaw = 0
+    private var lastLeftSentStrength = -1
+    private var lastRightSentStrength = -1
+    private var lastLeftConfig: AdaptiveTriggerConfig? = null
+    private var lastRightConfig: AdaptiveTriggerConfig? = null
 
     private data class HidHandle(
         val connection: UsbDeviceConnection,
@@ -91,10 +95,11 @@ class AdaptiveTriggerControllerImpl(
     }
 
     override fun applyCurrentState() {
-        lastLeftActive = false
-        lastRightActive = false
+        lastLeftSentStrength = -1
+        lastRightSentStrength = -1
+        lastLeftConfig = null
+        lastRightConfig = null
         val current = _uiState.value
-        // Azonnali alkalmazás nyers értékkel
         val l2Raw = (current.leftTriggerPressedPercent / 100f * 255f).toInt()
         val r2Raw = (current.rightTriggerPressedPercent / 100f * 255f).toInt()
         checkAndApplyActiveHelper(l2Raw, r2Raw)
@@ -104,21 +109,31 @@ class AdaptiveTriggerControllerImpl(
         val handle = hidHandle ?: return
         val state = _uiState.value
         
-        // JAVÍTÁS: Minden effektnél (RESISTANCE is) használjuk a szoftveres tartományfigyelést.
-        // Ezzel az app élőben, a nyers adatok alapján dönt az effekt bekapcsolásáról, 
-        // ami megszünteti a hardveres és szoftveres értékek közötti eltérést.
-        val leftActive = isInsideRaw(l2Raw, state.leftTrigger, lastLeftActive)
-        val rightActive = isInsideRaw(r2Raw, state.rightTrigger, lastRightActive)
+        val currentL = state.leftTrigger
+        val currentR = state.rightTrigger
 
-        if (leftActive != lastLeftActive || rightActive != lastRightActive) {
-            lastLeftActive = leftActive
-            lastRightActive = rightActive
+        // Irányérzékeny erősség számítás
+        val leftTargetStrength = calculateRampStrength(l2Raw, currentL, lastLeftRaw)
+        val rightTargetStrength = calculateRampStrength(r2Raw, currentR, lastRightRaw)
+
+        // Frissítjük az utolsó nyers értékeket az irányhoz
+        lastLeftRaw = l2Raw
+        lastRightRaw = r2Raw
+
+        // Csak akkor küldünk riportot, ha változott az erősség vagy a konfiguráció
+        if (leftTargetStrength != lastLeftSentStrength || rightTargetStrength != lastRightSentStrength || 
+            currentL != lastLeftConfig || currentR != lastRightConfig) {
+            
+            lastLeftSentStrength = leftTargetStrength
+            lastRightSentStrength = rightTargetStrength
+            lastLeftConfig = currentL
+            lastRightConfig = currentR
             
             val report = DualSenseTriggerReportBuilder.buildReport(
-                left = state.leftTrigger,
-                right = state.rightTrigger,
-                leftEnabled = leftActive,
-                rightEnabled = rightActive
+                left = currentL,
+                right = currentR,
+                leftStrength = leftTargetStrength,
+                rightStrength = rightTargetStrength
             )
             
             try {
@@ -127,17 +142,61 @@ class AdaptiveTriggerControllerImpl(
         }
     }
 
-    private fun isInsideRaw(raw: Int, config: AdaptiveTriggerConfig, wasInside: Boolean): Boolean {
-        if (config.effect == AdaptiveTriggerEffect.OFF) return false
+    private fun calculateRampStrength(raw: Int, config: AdaptiveTriggerConfig, prevRaw: Int): Int {
+        if (config.effect == AdaptiveTriggerEffect.OFF) return 0
         
-        // Százalék konvertálása nyers 0-255 értékre
         val startRaw = (config.startPercent / 100f * 255f).roundToInt()
         val endRaw = (config.endPercent / 100f * 255f).roundToInt()
         
-        // Minimális hiszterézis (kb 0.8% = 2 egység), hogy ne táncoljon a határon
-        val margin = if (wasInside) 2 else 0
+        // Instant kikapcsolás a tartományon kívül
+        if (raw < startRaw || raw > endRaw) return 0
+
+        val rampSize = 20 
+        val totalRange = endRaw - startRaw
+        val effectiveRamp = if (totalRange < rampSize * 2) totalRange / 2 else rampSize
         
-        return raw >= (startRaw - margin) && raw <= (endRaw + margin)
+        // Meghatározzuk a mozgás irányát (raw >= prevRaw -> befele nyomjuk)
+        val isPressing = raw >= prevRaw
+        
+        return when {
+            // ELŐRE IRÁNY (Húzás / Pressing)
+            isPressing -> {
+                when {
+                    // Startnál szinuszos belépés
+                    raw < (startRaw + effectiveRamp) && effectiveRamp > 0 -> {
+                        val x = (raw - startRaw).toFloat() / effectiveRamp.toFloat()
+                        val multiplier = (1.0 - kotlin.math.cos(x * kotlin.math.PI)) / 2.0
+                        (config.strengthPercent * multiplier).roundToInt().coerceAtLeast(1)
+                    }
+                    // End pontig végig tartjuk a teljes erőt, ott pedig instant release
+                    else -> config.strengthPercent
+                }
+            }
+            
+            // VISSZA IRÁNY (Engedés / Releasing)
+            else -> {
+                when {
+                    // End felől érkezve (túlhúzás után) szinuszos elkapás/visszapuhulás
+                    raw > (endRaw - effectiveRamp) && effectiveRamp > 0 -> {
+                        val x = (endRaw - raw).toFloat() / effectiveRamp.toFloat()
+                        val multiplier = (1.0 - kotlin.math.cos(x * kotlin.math.PI)) / 2.0
+                        (config.strengthPercent * multiplier).roundToInt().coerceAtLeast(1)
+                    }
+                    // Start felé közelítve szinuszos ellágyulás (hogy ne kattanjon a végén)
+                    raw < (startRaw + effectiveRamp) && effectiveRamp > 0 -> {
+                        val x = (raw - startRaw).toFloat() / effectiveRamp.toFloat()
+                        val multiplier = (1.0 - kotlin.math.cos(x * kotlin.math.PI)) / 2.0
+                        (config.strengthPercent * multiplier).roundToInt().coerceAtLeast(1)
+                    }
+                    // Középen marad a teljes erő
+                    else -> config.strengthPercent
+                }
+            }
+        }
+    }
+
+    private fun isInsideRaw(raw: Int, config: AdaptiveTriggerConfig, wasInside: Boolean): Boolean {
+        return false // Már a calculateRampStrength végzi
     }
 
     override fun refreshConnection() {
@@ -274,7 +333,9 @@ class AdaptiveTriggerControllerImpl(
         inputReaderRunning = false
         hidHandle?.close()
         hidHandle = null
-        lastLeftActive = false
-        lastRightActive = false
+        lastLeftSentStrength = -1
+        lastRightSentStrength = -1
+        lastLeftConfig = null
+        lastRightConfig = null
     }
 }
