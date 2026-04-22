@@ -8,6 +8,7 @@ enum class AppSection(@StringRes val titleRes: Int) {
     ADAPTIVE_TRIGGERS(R.string.section_adaptive_triggers),
     LEDS(R.string.section_leds),
     INPUT_TEST(R.string.section_input_test),
+    MOTION_SENSORS(R.string.section_motion_sensors),
     VIBRATE_TEST(R.string.section_vibrate_test),
     SETTINGS(R.string.section_settings)
 }

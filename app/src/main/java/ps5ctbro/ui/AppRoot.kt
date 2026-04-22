@@ -31,6 +31,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.MotionSensorsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SettingsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.VibrationScreen
@@ -100,7 +101,7 @@ fun AppRoot(
 
     val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
     val ledScreenVisible = currentSection == AppSection.LEDS
-    val inputTestScreenVisible = currentSection == AppSection.INPUT_TEST
+    val inputTestVisible = currentSection == AppSection.INPUT_TEST || currentSection == AppSection.MOTION_SENSORS
     val vibrationScreenVisible = currentSection == AppSection.VIBRATE_TEST
     val speakerScreenVisible = currentSection == AppSection.SPEAKER
 
@@ -145,15 +146,15 @@ fun AppRoot(
         }
     }
 
-    DisposableEffect(inputTestScreenVisible) {
-        if (inputTestScreenVisible) {
+    DisposableEffect(inputTestVisible) {
+        if (inputTestVisible) {
             onInputTestScreenVisible()
         } else {
             onInputTestScreenHidden()
         }
 
         onDispose {
-            if (inputTestScreenVisible) {
+            if (inputTestVisible) {
                 onInputTestScreenHidden()
             }
         }
@@ -256,6 +257,14 @@ fun AppRoot(
 
                         AppSection.INPUT_TEST -> {
                             InputTestScreen(
+                                uiState = inputTestUiState,
+                                onRefreshConnectionClick = onRefreshInputTestConnectionClick,
+                                showLogs = showLogs
+                            )
+                        }
+
+                        AppSection.MOTION_SENSORS -> {
+                            MotionSensorsScreen(
                                 uiState = inputTestUiState,
                                 onRefreshConnectionClick = onRefreshInputTestConnectionClick,
                                 showLogs = showLogs
