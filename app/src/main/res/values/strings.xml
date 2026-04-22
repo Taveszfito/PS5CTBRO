@@ -4,7 +4,7 @@
     <string name="section_adaptive_triggers">Adaptive Triggers</string>
     <string name="section_leds">LED Control</string>
     <string name="section_input_test">Input Test</string>
-    <string name="section_motion_sensors">Motion Sensors</string>
+    <string name="section_motion_sensors">Gyroscope Test</string>
     <string name="section_vibrate_test">Vibration Test</string>
     <string name="section_settings">Settings</string>
     <string name="led_effect_off">Off</string>

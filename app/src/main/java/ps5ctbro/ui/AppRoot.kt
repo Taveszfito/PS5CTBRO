@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,14 +18,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.stringResource
-import com.DueBoysenberry1226.ps5ctbro.R
+import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppDrawerContent
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppTopBar
+import com.DueBoysenberry1226.ps5ctbro.ui.components.MiniInfoPill
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
@@ -36,6 +40,9 @@ import com.DueBoysenberry1226.ps5ctbro.ui.screens.SettingsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.VibrationScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
+import com.DueBoysenberry1226.ps5ctbro.ui.theme.BlueBright
+import com.DueBoysenberry1226.ps5ctbro.ui.theme.Midnight700
+import com.DueBoysenberry1226.ps5ctbro.ui.theme.Midnight800
 import com.DueBoysenberry1226.ps5ctbro.ui.vibrate.VibrationUiState
 import kotlinx.coroutines.launch
 
@@ -106,193 +113,180 @@ fun AppRoot(
     val speakerScreenVisible = currentSection == AppSection.SPEAKER
 
     DisposableEffect(speakerScreenVisible) {
-        if (speakerScreenVisible) {
-            onSpeakerScreenVisible()
-        } else {
-            onSpeakerScreenHidden()
-        }
+        if (speakerScreenVisible) onSpeakerScreenVisible() else onSpeakerScreenHidden()
         onDispose {
-            if (speakerScreenVisible) {
-                onSpeakerScreenHidden()
-            }
+            if (speakerScreenVisible) onSpeakerScreenHidden()
         }
     }
 
     DisposableEffect(adaptiveScreenVisible) {
-        if (adaptiveScreenVisible) {
-            onAdaptiveTriggersScreenVisible()
-        } else {
-            onAdaptiveTriggersScreenHidden()
-        }
-
+        if (adaptiveScreenVisible) onAdaptiveTriggersScreenVisible() else onAdaptiveTriggersScreenHidden()
         onDispose {
-            if (adaptiveScreenVisible) {
-                onAdaptiveTriggersScreenHidden()
-            }
+            if (adaptiveScreenVisible) onAdaptiveTriggersScreenHidden()
         }
     }
 
     DisposableEffect(ledScreenVisible) {
-        if (ledScreenVisible) {
-            onLedScreenVisible()
-        } else {
-            onLedScreenHidden()
-        }
-
+        if (ledScreenVisible) onLedScreenVisible() else onLedScreenHidden()
         onDispose {
-            if (ledScreenVisible) {
-                onLedScreenHidden()
-            }
+            if (ledScreenVisible) onLedScreenHidden()
         }
     }
 
     DisposableEffect(inputTestVisible) {
-        if (inputTestVisible) {
-            onInputTestScreenVisible()
-        } else {
-            onInputTestScreenHidden()
-        }
-
+        if (inputTestVisible) onInputTestScreenVisible() else onInputTestScreenHidden()
         onDispose {
-            if (inputTestVisible) {
-                onInputTestScreenHidden()
-            }
+            if (inputTestVisible) onInputTestScreenHidden()
         }
     }
 
     DisposableEffect(vibrationScreenVisible) {
-        if (vibrationScreenVisible) {
-            onVibrationScreenVisible()
-        } else {
-            onVibrationScreenHidden()
-        }
-
+        if (vibrationScreenVisible) onVibrationScreenVisible() else onVibrationScreenHidden()
         onDispose {
-            if (vibrationScreenVisible) {
-                onVibrationScreenHidden()
-            }
+            if (vibrationScreenVisible) onVibrationScreenHidden()
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            AppDrawerContent(
-                currentSection = currentSection,
-                onSectionSelected = { selected ->
-                    currentSection = selected
-                    scope.launch { drawerState.close() }
-                },
-                onCloseClick = {
-                    scope.launch { drawerState.close() }
-                }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        BlueBright.copy(alpha = 0.18f),
+                        Midnight700.copy(alpha = 0.45f),
+                        Midnight800,
+                        Color(0xFF040714)
+                    )
+                )
             )
-        }
     ) {
-        Scaffold(
-            topBar = {
-                AppTopBar(
-                    title = stringResource(currentSection.titleRes),
-                    onMenuClick = {
-                        scope.launch {
-                            if (drawerState.isClosed) {
-                                drawerState.open()
-                            } else {
-                                drawerState.close()
-                            }
-                        }
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                AppDrawerContent(
+                    currentSection = currentSection,
+                    onSectionSelected = { selected ->
+                        currentSection = selected
+                        scope.launch { drawerState.close() }
+                    },
+                    onCloseClick = {
+                        scope.launch { drawerState.close() }
                     }
                 )
             }
-        ) { innerPadding ->
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = Color.Transparent
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
+        ) {
+            Scaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    AppTopBar(
+                        title = stringResource(currentSection.titleRes),
+                        onMenuClick = {
+                            scope.launch {
+                                if (drawerState.isClosed) drawerState.open() else drawerState.close()
+                            }
+                        },
+                        actions = {
+                            if (currentSection == AppSection.MOTION_SENSORS) {
+                                MiniInfoPill(
+                                    text = if (inputTestUiState.controllerConnected) "● Aktív" else "● Offline",
+                                    modifier = Modifier
+                                        .padding(end = 6.dp)
+                                        .clickable(onClick = onRefreshInputTestConnectionClick)
+                                )
+                            }
+                        }
+                    )
+                }
+            ) { innerPadding ->
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Transparent
                 ) {
-                    when (currentSection) {
-                        AppSection.SPEAKER -> {
-                            SpeakerScreen(
-                                uiState = speakerUiState,
-                                onStartStreamClick = onStartStreamClick,
-                                onStopStreamClick = onStopStreamClick,
-                                onApplySpeakerRouteClick = onApplySpeakerRouteClick,
-                                onVolumeStepChanged = onVolumeStepChanged,
-                                onRouteCh1Changed = onRouteCh1Changed,
-                                onRouteCh2Changed = onRouteCh2Changed,
-                                onRouteCh3Changed = onRouteCh3Changed,
-                                onRouteCh4Changed = onRouteCh4Changed,
-                                onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
-                                onHardwareVolumeButtonsControlControllerChanged =
-                                    onHardwareVolumeButtonsControlControllerChanged,
-                                showLogs = showLogs
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        when (currentSection) {
+                            AppSection.SPEAKER -> {
+                                SpeakerScreen(
+                                    uiState = speakerUiState,
+                                    onStartStreamClick = onStartStreamClick,
+                                    onStopStreamClick = onStopStreamClick,
+                                    onApplySpeakerRouteClick = onApplySpeakerRouteClick,
+                                    onVolumeStepChanged = onVolumeStepChanged,
+                                    onRouteCh1Changed = onRouteCh1Changed,
+                                    onRouteCh2Changed = onRouteCh2Changed,
+                                    onRouteCh3Changed = onRouteCh3Changed,
+                                    onRouteCh4Changed = onRouteCh4Changed,
+                                    onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
+                                    onHardwareVolumeButtonsControlControllerChanged = onHardwareVolumeButtonsControlControllerChanged,
+                                    showLogs = showLogs
+                                )
+                            }
 
-                        AppSection.ADAPTIVE_TRIGGERS -> {
-                            AdaptiveTriggersScreen(
-                                uiState = adaptiveTriggersUiState,
-                                onLeftTriggerChanged = onLeftTriggerChanged,
-                                onRightTriggerChanged = onRightTriggerChanged,
-                                onApplyClick = onApplyTriggersClick,
-                                onRefreshConnectionClick = onRefreshTriggerConnectionClick,
-                                onResetClick = onResetTriggersClick,
-                                showLogs = showLogs
-                            )
-                        }
+                            AppSection.ADAPTIVE_TRIGGERS -> {
+                                AdaptiveTriggersScreen(
+                                    uiState = adaptiveTriggersUiState,
+                                    onLeftTriggerChanged = onLeftTriggerChanged,
+                                    onRightTriggerChanged = onRightTriggerChanged,
+                                    onApplyClick = onApplyTriggersClick,
+                                    onRefreshConnectionClick = onRefreshTriggerConnectionClick,
+                                    onResetClick = onResetTriggersClick,
+                                    showLogs = showLogs
+                                )
+                            }
 
-                        AppSection.LEDS -> {
-                            LedScreen(
-                                uiState = ledUiState,
-                                onConfigChanged = onLedConfigChanged,
-                                onApplyClick = onApplyLedClick,
-                                onRefreshConnectionClick = onRefreshLedConnectionClick,
-                                onResetClick = onResetLedClick
-                            )
-                        }
+                            AppSection.LEDS -> {
+                                LedScreen(
+                                    uiState = ledUiState,
+                                    onConfigChanged = onLedConfigChanged,
+                                    onApplyClick = onApplyLedClick,
+                                    onRefreshConnectionClick = onRefreshLedConnectionClick,
+                                    onResetClick = onResetLedClick
+                                )
+                            }
 
-                        AppSection.INPUT_TEST -> {
-                            InputTestScreen(
-                                uiState = inputTestUiState,
-                                onRefreshConnectionClick = onRefreshInputTestConnectionClick,
-                                showLogs = showLogs
-                            )
-                        }
+                            AppSection.INPUT_TEST -> {
+                                InputTestScreen(
+                                    uiState = inputTestUiState,
+                                    onRefreshConnectionClick = onRefreshInputTestConnectionClick,
+                                    showLogs = showLogs
+                                )
+                            }
 
-                        AppSection.MOTION_SENSORS -> {
-                            MotionSensorsScreen(
-                                uiState = inputTestUiState,
-                                onRefreshConnectionClick = onRefreshInputTestConnectionClick,
-                                showLogs = showLogs
-                            )
-                        }
+                            AppSection.MOTION_SENSORS -> {
+                                MotionSensorsScreen(
+                                    uiState = inputTestUiState,
+                                    onRefreshConnectionClick = onRefreshInputTestConnectionClick,
+                                    showLogs = showLogs
+                                )
+                            }
 
-                        AppSection.VIBRATE_TEST -> {
-                            VibrationScreen(
-                                uiState = vibrationUiState,
-                                onStrengthLeftChanged = onVibrationStrengthLeftChanged,
-                                onStrengthRightChanged = onVibrationStrengthRightChanged,
-                                onDurationChanged = onVibrationDurationChanged,
-                                onInfiniteChanged = onVibrationInfiniteChanged,
-                                onApplyLeft = onApplyVibrationLeft,
-                                onApplyRight = onApplyVibrationRight,
-                                onStopClick = onStopVibrationClick,
-                                onRefreshConnectionClick = onRefreshVibrationConnectionClick,
-                                showLogs = showLogs
-                            )
-                        }
+                            AppSection.VIBRATE_TEST -> {
+                                VibrationScreen(
+                                    uiState = vibrationUiState,
+                                    onStrengthLeftChanged = onVibrationStrengthLeftChanged,
+                                    onStrengthRightChanged = onVibrationStrengthRightChanged,
+                                    onDurationChanged = onVibrationDurationChanged,
+                                    onInfiniteChanged = onVibrationInfiniteChanged,
+                                    onApplyLeft = onApplyVibrationLeft,
+                                    onApplyRight = onApplyVibrationRight,
+                                    onStopClick = onStopVibrationClick,
+                                    onRefreshConnectionClick = onRefreshVibrationConnectionClick,
+                                    showLogs = showLogs
+                                )
+                            }
 
-                        AppSection.SETTINGS -> {
-                            SettingsScreen(
-                                uiState = settingsUiState,
-                                onLanguageSelected = onLanguageSelected,
-                                onGainChanged = onGainChanged,
-                                onShowLogWindowsChanged = onShowLogWindowsChanged
-                            )
+                            AppSection.SETTINGS -> {
+                                SettingsScreen(
+                                    uiState = settingsUiState,
+                                    onLanguageSelected = onLanguageSelected,
+                                    onGainChanged = onGainChanged,
+                                    onShowLogWindowsChanged = onShowLogWindowsChanged
+                                )
+                            }
                         }
                     }
                 }
