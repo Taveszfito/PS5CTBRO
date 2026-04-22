@@ -24,5 +24,8 @@ interface AudioController {
     fun setHardwareVolumeButtonsControlController(enabled: Boolean)
     fun handleHardwareVolumeButton(direction: Int): Boolean
 
+    fun onScreenVisible()
+    fun onScreenHidden()
+
     fun release()
 }

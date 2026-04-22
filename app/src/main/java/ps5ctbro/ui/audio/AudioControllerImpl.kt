@@ -273,6 +273,25 @@ class AudioControllerImpl private constructor(
         return true
     }
 
+    override fun onScreenVisible() {
+        scope.launch(Dispatchers.IO) {
+            // 1. Speaker wake-up (6x repeat to match streaming initialization)
+            repeat(6) {
+                runSpeakerHid()
+                SystemClock.sleep(40)
+            }
+            
+            // 2. LED kick (which enables vibration channel and haptics)
+            LedControllerImpl.getInstance(appContext).sendWakeKick()
+        }
+    }
+
+    override fun onScreenHidden() {
+        if (!_uiState.value.isStreaming) {
+            closeController()
+        }
+    }
+
     override fun release() {
         stopStreamingInternal()
         stopPhoneMuteForStreaming()
@@ -657,6 +676,7 @@ class AudioControllerImpl private constructor(
         val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
         report[0] = DS_OUTPUT_REPORT_USB.toByte()
 
+        // Original "magic bytes" for vibration and initialization
         report[1] = 0xF3.toByte()
         report[2] = 0x86.toByte()
         
@@ -667,6 +687,7 @@ class AudioControllerImpl private constructor(
         report[7] = 0xFF.toByte()
         report[8] = 0xFF.toByte()
 
+        // These seem important for enabling the audio/vibration mix
         report[39] = 0x03.toByte() 
         report[42] = 0x02.toByte()
         report[44] = 0x24.toByte()

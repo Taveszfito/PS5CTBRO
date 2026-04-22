@@ -111,6 +111,8 @@ class MainActivity : AppCompatActivity() {
                     onMutePhoneWhileStreamingChanged = viewModel::setMutePhoneWhileStreaming,
                     onHardwareVolumeButtonsControlControllerChanged =
                         viewModel::setHardwareVolumeButtonsControlController,
+                    onSpeakerScreenVisible = viewModel::onScreenVisible,
+                    onSpeakerScreenHidden = viewModel::onScreenHidden,
                     onLeftTriggerChanged = { config ->
                         adaptiveTriggersViewModel.updateTriggerConfig(TriggerSide.LEFT, config)
                     },

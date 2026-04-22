@@ -68,6 +68,14 @@ class SpeakerViewModel(application: Application) : AndroidViewModel(application)
         return controller.handleHardwareVolumeButton(direction)
     }
 
+    fun onScreenVisible() {
+        controller.onScreenVisible()
+    }
+
+    fun onScreenHidden() {
+        controller.onScreenHidden()
+    }
+
     override fun onCleared() {
         super.onCleared()
     }

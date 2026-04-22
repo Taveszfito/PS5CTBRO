@@ -57,6 +57,8 @@ fun AppRoot(
     onRouteCh4Changed: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
     onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
+    onSpeakerScreenVisible: () -> Unit,
+    onSpeakerScreenHidden: () -> Unit,
     onLeftTriggerChanged: (AdaptiveTriggerConfig) -> Unit,
     onRightTriggerChanged: (AdaptiveTriggerConfig) -> Unit,
     onAdaptiveTriggersScreenVisible: () -> Unit,
@@ -100,6 +102,20 @@ fun AppRoot(
     val ledScreenVisible = currentSection == AppSection.LEDS
     val inputTestScreenVisible = currentSection == AppSection.INPUT_TEST
     val vibrationScreenVisible = currentSection == AppSection.VIBRATE_TEST
+    val speakerScreenVisible = currentSection == AppSection.SPEAKER
+
+    DisposableEffect(speakerScreenVisible) {
+        if (speakerScreenVisible) {
+            onSpeakerScreenVisible()
+        } else {
+            onSpeakerScreenHidden()
+        }
+        onDispose {
+            if (speakerScreenVisible) {
+                onSpeakerScreenHidden()
+            }
+        }
+    }
 
     DisposableEffect(adaptiveScreenVisible) {
         if (adaptiveScreenVisible) {
