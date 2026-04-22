@@ -4,5 +4,17 @@ data class SettingsUiState(
     val currentLanguage: String = "auto", // "auto", "en", "hu"
     val appVersion: String = "",
     val audioGain: Float = 1.0f,
-    val showLogWindows: Boolean = false
+    val showLogWindows: Boolean = false,
+    val controllerInfo: ControllerInfo? = null
+)
+
+data class ControllerInfo(
+    val isConnected: Boolean = false,
+    val isWired: Boolean = true,
+    val firmwareVersion: String = "Not queried yet",
+    val batteryLevel: Int = 0,
+    val serialNumber: String = "Not queried yet",
+    val buildDate: String = "Not queried yet",
+    val btAddress: String = "Not queried yet",
+    val controllerColor: String = "Not queried yet"
 )

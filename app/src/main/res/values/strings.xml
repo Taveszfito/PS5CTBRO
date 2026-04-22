@@ -197,7 +197,20 @@
     <string name="card_title_language">Language</string>
     <string name="label_language_english">English</string>
     <string name="label_language_hungarian">Hungarian</string>
-    <string name="card_title_about">About</string>
+
+    <string name="card_title_controller_info">About my controller</string>
+    <string name="label_connection_status">Connection status</string>
+    <string name="label_connection_type">Connection type</string>
+    <string name="label_firmware_version">Firmware version</string>
+    <string name="label_battery_level">Battery level</string>
+    <string name="label_serial_number">Serial number</string>
+    <string name="label_build_date">Build date</string>
+    <string name="label_bt_address">BT address</string>
+    <string name="label_controller_color">Controller color</string>
+    <string name="value_wired">Wired</string>
+    <string name="value_wireless">Wireless</string>
+
+    <string name="card_title_about">About this app</string>
     <string name="label_version">Version</string>
 
     <string name="card_title_audio_gain">Audio Gain</string>

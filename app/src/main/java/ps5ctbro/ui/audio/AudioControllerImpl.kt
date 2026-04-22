@@ -79,6 +79,125 @@ class AudioControllerImpl private constructor(
         private const val MAX_CONTROLLER_VOLUME = 0xFF
     }
 
+    private data class ParsedControllerDetails(
+        val serialNumber: String,
+        val firmwareVersion: String,
+        val buildDate: String,
+        val btAddress: String,
+        val controllerColor: String
+    )
+
+    private fun parseControllerDetailsFromKnownOffsets(
+        report: ByteArray,
+        device: UsbDevice
+    ): ParsedControllerDetails {
+        fun isProbablyAsciiPrintable(text: String): Boolean {
+            if (text.isBlank()) return false
+            return text.all { ch ->
+                ch.code in 32..126
+            }
+        }
+
+        fun isProbablyFirmware(bytes: List<Int>): Boolean {
+            // 00.00.00.00 nyilván kamu
+            if (bytes.all { it == 0 }) return false
+
+            // Túl extrém / szemmel láthatóan random sem jó
+            val nonZeroCount = bytes.count { it != 0 }
+            if (nonZeroCount == 0) return false
+
+            return true
+        }
+
+        fun isProbablyBtAddress(bytes: List<Int>): Boolean {
+            if (bytes.size != 6) return false
+            if (bytes.all { it == 0x00 }) return false
+            if (bytes.all { it == 0xFF }) return false
+            return true
+        }
+
+        val serial = device.serialNumber?.takeIf { it.isNotBlank() } ?: "Not available over Android USB"
+
+        val btBytes = if (report.size >= 7) {
+            listOf(
+                report[6].toInt() and 0xFF,
+                report[5].toInt() and 0xFF,
+                report[4].toInt() and 0xFF,
+                report[3].toInt() and 0xFF,
+                report[2].toInt() and 0xFF,
+                report[1].toInt() and 0xFF
+            )
+        } else {
+            emptyList()
+        }
+
+        val btAddress =
+            if (isProbablyBtAddress(btBytes)) {
+                "%02X:%02X:%02X:%02X:%02X:%02X".format(
+                    btBytes[0],
+                    btBytes[1],
+                    btBytes[2],
+                    btBytes[3],
+                    btBytes[4],
+                    btBytes[5]
+                )
+            } else {
+                "Not reliably available"
+            }
+
+        val fwBytes = if (report.size >= 39) {
+            listOf(
+                report[38].toInt() and 0xFF,
+                report[37].toInt() and 0xFF,
+                report[36].toInt() and 0xFF,
+                report[35].toInt() and 0xFF
+            )
+        } else {
+            emptyList()
+        }
+
+        val firmwareVersion =
+            if (fwBytes.size == 4 && isProbablyFirmware(fwBytes)) {
+                "%02X.%02X.%02X.%02X".format(
+                    fwBytes[0],
+                    fwBytes[1],
+                    fwBytes[2],
+                    fwBytes[3]
+                )
+            } else {
+                "Not reliably available over current USB report"
+            }
+
+        val rawBuildDate = if (report.size >= 50) {
+            try {
+                String(report, 39, 11).trim()
+            } catch (_: Exception) {
+                ""
+            }
+        } else {
+            ""
+        }
+
+        val buildDate =
+            if (isProbablyAsciiPrintable(rawBuildDate) && rawBuildDate.length >= 4) {
+                rawBuildDate
+            } else {
+                "Not reliably available over current USB report"
+            }
+
+        // A színkód most kamu értékeket adhat, ezért csak akkor mutassuk,
+        // ha később tényleg valid USB reportot találsz rá.
+        val controllerColor = "Not reliably available over current USB report"
+
+        return ParsedControllerDetails(
+            serialNumber = serial,
+            firmwareVersion = firmwareVersion,
+            buildDate = buildDate,
+            btAddress = btAddress,
+            controllerColor = controllerColor
+        )
+    }
+
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -623,7 +742,7 @@ class AudioControllerImpl private constructor(
     }
 
     private fun parseInputReport(report: ByteArray) {
-        if (report.size < 40) return
+        if (report.size < 54) return
 
         val t1Active = (report[33].toInt() and 0x80) == 0
         val t1X = ((report[35].toInt() and 0x0F) shl 8) or (report[34].toInt() and 0xFF)
@@ -633,10 +752,105 @@ class AudioControllerImpl private constructor(
         val t2X = ((report[39].toInt() and 0x0F) shl 8) or (report[38].toInt() and 0xFF)
         val t2Y = ((report[40].toInt() and 0xFF) shl 4) or ((report[39].toInt() and 0xF0) shr 4)
 
+        // Battery: Report 0x01, byte 53 (0-indexed)
+        // Bits 0-3: Capacity (0-8), Bit 4: Charging
+        val batteryByte = report[53].toInt()
+        val capacity = (batteryByte and 0x0F).coerceIn(0, 8)
+        val batteryPercent = (capacity * 100) / 8
+
         _uiState.update { current ->
             current.copy(
                 touch1 = TouchpadPoint(x = t1X, y = t1Y, isActive = t1Active),
-                touch2 = TouchpadPoint(x = t2X, y = t2Y, isActive = t2Active)
+                touch2 = TouchpadPoint(x = t2X, y = t2Y, isActive = t2Active),
+                batteryLevel = batteryPercent,
+                isWired = true
+            )
+        }
+    }
+
+    private fun fetchControllerDetails(controller: DualSenseUsbController, device: UsbDevice) {
+        scope.launch(Dispatchers.IO) {
+            SystemClock.sleep(150)
+
+            val candidateIds = listOf(
+                0x12, 0x20, 0x09, 0x05, 0x08, 0x81, 0x82
+            )
+            val candidateSizes = listOf(
+                64, 78, 96, 128, 256
+            )
+
+            var bestId = -1
+            var bestLen = -1
+            var bestBuffer: ByteArray? = null
+
+            for (reportId in candidateIds) {
+                for (size in candidateSizes) {
+                    val buffer = ByteArray(size)
+                    val len = try {
+                        controller.primeAndGetFeatureReport(reportId, buffer)
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Feature report exception id=0x${reportId.toString(16)} size=$size", t)
+                        -1
+                    }
+
+                    val hexDump = buffer.take(minOf(buffer.size, 64))
+                        .joinToString(separator = " ") { b ->
+                            "%02X".format(b.toInt() and 0xFF)
+                        }
+
+                    Log.d(
+                        TAG,
+                        "Feature scan id=0x${reportId.toString(16).uppercase()} size=$size len=$len data=$hexDump"
+                    )
+
+                    if (len > bestLen) {
+                        bestLen = len
+                        bestId = reportId
+                        bestBuffer = buffer.copyOf()
+                    }
+
+                    SystemClock.sleep(40)
+                }
+            }
+
+            if (bestLen <= 0 || bestBuffer == null) {
+                Log.e(TAG, "No usable feature report found. bestId=$bestId bestLen=$bestLen")
+
+                _uiState.update {
+                    it.copy(
+                        serialNumber = device.serialNumber ?: "N/A",
+                        firmwareVersion = "No readable USB feature report",
+                        buildDate = "Not available",
+                        btAddress = "Not available",
+                        controllerColor = "Not available"
+                    )
+                }
+                return@launch
+            }
+
+            Log.d(
+                TAG,
+                "Best feature report: id=0x${bestId.toString(16).uppercase()} len=$bestLen"
+            )
+
+            // Először próbáljuk a jelenlegi ismert 0x12-es kiosztást.
+            val parsed = parseControllerDetailsFromKnownOffsets(bestBuffer, device)
+
+            _uiState.update {
+                it.copy(
+                    serialNumber = parsed.serialNumber,
+                    firmwareVersion = parsed.firmwareVersion,
+                    buildDate = parsed.buildDate,
+                    btAddress = parsed.btAddress,
+                    controllerColor = parsed.controllerColor
+                )
+            }
+
+            Log.d(
+                TAG,
+                "Parsed controller details from best report: id=0x${bestId.toString(16).uppercase()} len=$bestLen " +
+                        "serial=${parsed.serialNumber} fw=${parsed.firmwareVersion} build=${parsed.buildDate} " +
+                        "bt=${parsed.btAddress} color=${parsed.controllerColor}"
             )
         }
     }
@@ -799,6 +1013,7 @@ class AudioControllerImpl private constructor(
         setControllerConnected(success)
         if (success) {
             setLog("DualSense csatlakoztatva")
+            fetchControllerDetails(controller, device)
         }
 
         return controller

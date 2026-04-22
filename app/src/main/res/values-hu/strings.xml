@@ -178,7 +178,20 @@
     <string name="card_title_language">Nyelv</string>
     <string name="label_language_english">Angol</string>
     <string name="label_language_hungarian">Magyar</string>
-    <string name="card_title_about">Névjegy</string>
+
+    <string name="card_title_controller_info">Kontrollerem adatai</string>
+    <string name="label_connection_status">Csatlakozás állapota</string>
+    <string name="label_connection_type">Csatlakozás típusa</string>
+    <string name="label_firmware_version">Firmware verzió</string>
+    <string name="label_battery_level">Akkumulátor töltöttség</string>
+    <string name="label_serial_number">Sorozatszám (Serial)</string>
+    <string name="label_build_date">Gyártási dátum</string>
+    <string name="label_bt_address">BT cím</string>
+    <string name="label_controller_color">Kontroller színe</string>
+    <string name="value_wired">Vezetékes</string>
+    <string name="value_wireless">Vezeték nélküli</string>
+
+    <string name="card_title_about">Az alkalmazásról</string>
     <string name="label_version">Verzió</string>
 
     <string name="card_title_audio_gain">Audio Erősítés (Gain)</string>

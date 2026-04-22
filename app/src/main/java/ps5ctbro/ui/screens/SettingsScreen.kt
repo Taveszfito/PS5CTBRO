@@ -47,8 +47,75 @@ fun SettingsScreen(
             onLanguageSelected = onLanguageSelected
         )
 
+        ControllerInfoCard(
+            info = uiState.controllerInfo
+        )
+
         AboutCard(
             version = uiState.appVersion
+        )
+    }
+}
+
+@Composable
+private fun ControllerInfoCard(info: com.DueBoysenberry1226.ps5ctbro.ui.settings.ControllerInfo?) {
+    SectionCard(title = stringResource(R.string.card_title_controller_info)) {
+        if (info == null || !info.isConnected) {
+            StatusRow(
+                label = stringResource(R.string.label_connection_status),
+                value = stringResource(R.string.status_disconnected)
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                InfoItem(
+                    label = stringResource(R.string.label_connection_status),
+                    value = stringResource(R.string.status_connected)
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_connection_type),
+                    value = stringResource(if (info.isWired) R.string.value_wired else R.string.value_wireless)
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_serial_number),
+                    value = info.serialNumber
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_firmware_version),
+                    value = info.firmwareVersion
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_build_date),
+                    value = info.buildDate
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_bt_address),
+                    value = info.btAddress
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_controller_color),
+                    value = info.controllerColor
+                )
+                InfoItem(
+                    label = stringResource(R.string.label_battery_level),
+                    value = "${info.batteryLevel}%"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoItem(label: String, value: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = value,
+            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
         )
     }
 }

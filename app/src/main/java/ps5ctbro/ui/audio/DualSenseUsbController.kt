@@ -7,6 +7,8 @@ import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 
+private const val USB_RECIP_INTERFACE = 0x01
+
 class DualSenseUsbController(
     private val connection: UsbDeviceConnection,
     private val usbInterface: UsbInterface,
@@ -20,6 +22,58 @@ class DualSenseUsbController(
 
     fun receive(buffer: ByteArray, timeout: Int = 10): Int {
         return connection.bulkTransfer(inEndpoint, buffer, buffer.size, timeout)
+    }
+
+    fun getFeatureReport(reportId: Int, buffer: ByteArray): Int {
+        if (buffer.isEmpty()) return -1
+
+        return try {
+            buffer.fill(0)
+            buffer[0] = reportId.toByte()
+
+            connection.controlTransfer(
+                UsbConstants.USB_DIR_IN or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
+                0x01, // HID_GET_REPORT
+                (0x03 shl 8) or reportId, // Feature report
+                usbInterface.id,
+                buffer,
+                buffer.size,
+                2000
+            )
+        } catch (_: Throwable) {
+            -1
+        }
+    }
+
+    fun primeAndGetFeatureReport(reportId: Int, buffer: ByteArray): Int {
+        if (buffer.isEmpty()) return -1
+
+        return try {
+            buffer.fill(0)
+            buffer[0] = reportId.toByte()
+
+            connection.controlTransfer(
+                UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
+                0x09, // HID_SET_REPORT
+                (0x03 shl 8) or reportId,
+                usbInterface.id,
+                buffer,
+                buffer.size,
+                1000
+            )
+
+            connection.controlTransfer(
+                UsbConstants.USB_DIR_IN or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
+                0x01, // HID_GET_REPORT
+                (0x03 shl 8) or reportId,
+                usbInterface.id,
+                buffer,
+                buffer.size,
+                2000
+            )
+        } catch (_: Throwable) {
+            -1
+        }
     }
 
     fun close() {

@@ -31,7 +31,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     init {
         audioController.uiState
             .onEach { audioState ->
-                _uiState.update { it.copy(audioGain = audioState.audioGain) }
+                _uiState.update { it.copy(
+                    audioGain = audioState.audioGain,
+                    controllerInfo = ControllerInfo(
+                        isConnected = audioState.controllerConnected,
+                        isWired = audioState.isWired,
+                        firmwareVersion = audioState.firmwareVersion,
+                        batteryLevel = audioState.batteryLevel,
+                        serialNumber = audioState.serialNumber,
+                        buildDate = audioState.buildDate,
+                        btAddress = audioState.btAddress,
+                        controllerColor = audioState.controllerColor
+                    )
+                ) }
             }
             .launchIn(viewModelScope)
     }
