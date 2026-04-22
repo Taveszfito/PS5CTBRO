@@ -130,9 +130,10 @@ class MediaProjectionForegroundService : Service() {
 
         // Attach MediaSession token to the notification for better background volume handling
         uiState.sessionToken?.let { token ->
-            builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                .setMediaSession(MediaSessionCompat.Token.fromToken(token))
-                .setShowActionsInCompactView(0))
+            builder.setStyle(
+                androidx.media.app.NotificationCompat.MediaStyle()
+                    .setMediaSession(MediaSessionCompat.Token.fromToken(token))
+            )
         }
 
         return builder.build()
