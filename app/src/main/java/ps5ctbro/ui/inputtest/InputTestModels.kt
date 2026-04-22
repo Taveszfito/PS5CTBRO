@@ -15,6 +15,18 @@ data class TriggerState(
     val percent: Int = 0
 )
 
+data class GyroState(
+    val x: Int = 0,
+    val y: Int = 0,
+    val z: Int = 0
+)
+
+data class AccelState(
+    val x: Int = 0,
+    val y: Int = 0,
+    val z: Int = 0
+)
+
 data class InputTestUiState(
     val controllerConnected: Boolean = false,
     val leftStick: StickState = StickState(),
@@ -25,7 +37,9 @@ data class InputTestUiState(
     val logText: String = "Input Test készen áll.",
     val rawReportInfo: String = "-",
     val touch1: TouchpadPoint = TouchpadPoint(),
-    val touch2: TouchpadPoint = TouchpadPoint()
+    val touch2: TouchpadPoint = TouchpadPoint(),
+    val gyro: GyroState = GyroState(),
+    val accel: AccelState = AccelState()
 )
 
 interface InputTestController {

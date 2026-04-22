@@ -44,6 +44,14 @@ class InputTestControllerImpl(
         private const val INPUT_OFFSET_BUTTONS_0 = 8
         private const val INPUT_OFFSET_BUTTONS_1 = 9
         private const val INPUT_OFFSET_BUTTONS_2 = 10
+
+        private const val INPUT_OFFSET_GYRO_X = 16
+        private const val INPUT_OFFSET_GYRO_Y = 18
+        private const val INPUT_OFFSET_GYRO_Z = 20
+
+        private const val INPUT_OFFSET_ACCEL_X = 22
+        private const val INPUT_OFFSET_ACCEL_Y = 24
+        private const val INPUT_OFFSET_ACCEL_Z = 26
     }
 
     private val appContext = context.applicationContext
@@ -381,8 +389,18 @@ class InputTestControllerImpl(
         receiverRegistered = false
     }
 
+    private var lastUiUpdateTime = 0L
+
+    private var smoothGyroX = 0f
+    private var smoothGyroY = 0f
+    private var smoothGyroZ = 0f
+
     private fun parseInputReport(buffer: ByteArray, size: Int) {
         if (size <= INPUT_OFFSET_BUTTONS_2) return
+
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastUiUpdateTime < 16) return
+        lastUiUpdateTime = now
 
         val leftStick = StickState(
             rawX = buffer[INPUT_OFFSET_LEFT_STICK_X].toUByte().toInt(),
@@ -419,6 +437,19 @@ class InputTestControllerImpl(
             buttons2 = buttons2
         )
 
+        val gyroX = readS16(buffer, INPUT_OFFSET_GYRO_X)
+        val gyroY = readS16(buffer, INPUT_OFFSET_GYRO_Y)
+        val gyroZ = readS16(buffer, INPUT_OFFSET_GYRO_Z)
+
+        val accelX = readS16(buffer, INPUT_OFFSET_ACCEL_X)
+        val accelY = readS16(buffer, INPUT_OFFSET_ACCEL_Y)
+        val accelZ = readS16(buffer, INPUT_OFFSET_ACCEL_Z)
+
+        // Egyszerű EMA szűrő a rezgés csökkentésére (alpha = 0.2)
+        smoothGyroX = smoothGyroX * 0.8f + gyroX * 0.2f
+        smoothGyroY = smoothGyroY * 0.8f + gyroY * 0.2f
+        smoothGyroZ = smoothGyroZ * 0.8f + gyroZ * 0.2f
+
         val rawReportInfo = buildString {
             append("size=")
             append(size)
@@ -447,9 +478,24 @@ class InputTestControllerImpl(
                 rawReportInfo = rawReportInfo,
                 logText = appContext.getString(R.string.log_input_stream_active),
                 touch1 = TouchpadPoint(x = t1X, y = t1Y, isActive = t1Active),
-                touch2 = TouchpadPoint(x = t2X, y = t2Y, isActive = t2Active)
+                touch2 = TouchpadPoint(x = t2X, y = t2Y, isActive = t2Active),
+                gyro = GyroState(
+                    x = smoothGyroX.toInt(),
+                    y = smoothGyroY.toInt(),
+                    z = smoothGyroZ.toInt()
+                ),
+                accel = AccelState(
+                    x = accelX,
+                    y = accelY,
+                    z = accelZ
+                )
             )
         }
+    }
+
+    private fun readS16(buffer: ByteArray, offset: Int): Int {
+        if (offset + 1 >= buffer.size) return 0
+        return (buffer[offset].toInt() and 0xFF) or (buffer[offset + 1].toInt() shl 8)
     }
 
     private fun buildPressedButtons(
