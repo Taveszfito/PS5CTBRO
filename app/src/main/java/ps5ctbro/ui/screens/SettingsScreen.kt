@@ -76,24 +76,36 @@ private fun ControllerInfoCard(info: com.DueBoysenberry1226.ps5ctbro.ui.settings
                     value = stringResource(if (info.isWired) R.string.value_wired else R.string.value_wireless)
                 )
                 InfoItem(
-                    label = stringResource(R.string.label_serial_number),
-                    value = info.serialNumber
+                    label = stringResource(R.string.label_bt_address),
+                    value = info.btAddress
                 )
                 InfoItem(
                     label = stringResource(R.string.label_firmware_version),
                     value = info.firmwareVersion
                 )
                 InfoItem(
+                    label = "Firmware type",
+                    value = info.firmwareType
+                )
+                InfoItem(
+                    label = "Software series",
+                    value = info.softwareSeries
+                )
+                InfoItem(
+                    label = "Hardware info",
+                    value = info.hardwareInfo
+                )
+                InfoItem(
+                    label = "Update version",
+                    value = info.updateVersion
+                )
+                InfoItem(
                     label = stringResource(R.string.label_build_date),
                     value = info.buildDate
                 )
                 InfoItem(
-                    label = stringResource(R.string.label_bt_address),
-                    value = info.btAddress
-                )
-                InfoItem(
-                    label = stringResource(R.string.label_controller_color),
-                    value = info.controllerColor
+                    label = "Build time",
+                    value = info.buildTime
                 )
                 InfoItem(
                     label = stringResource(R.string.label_battery_level),

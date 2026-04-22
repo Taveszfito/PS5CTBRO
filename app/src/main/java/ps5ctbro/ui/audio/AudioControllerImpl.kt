@@ -81,122 +81,128 @@ class AudioControllerImpl private constructor(
 
     private data class ParsedControllerDetails(
         val serialNumber: String,
-        val firmwareVersion: String,
-        val buildDate: String,
         val btAddress: String,
+        val firmwareVersion: String,
+        val firmwareType: String,
+        val softwareSeries: String,
+        val hardwareInfo: String,
+        val updateVersion: String,
+        val buildDate: String,
+        val buildTime: String,
+        val deviceInfo: String,
         val controllerColor: String
     )
 
-    private fun parseControllerDetailsFromKnownOffsets(
-        report: ByteArray,
+    private fun ByteArray.readLe16(offset: Int): Int {
+        if (offset + 1 >= size) return 0
+        return (this[offset].toInt() and 0xFF) or
+                ((this[offset + 1].toInt() and 0xFF) shl 8)
+    }
+
+    private fun ByteArray.readLe32(offset: Int): Long {
+        if (offset + 3 >= size) return 0L
+        return (
+                (this[offset].toLong() and 0xFF) or
+                        ((this[offset + 1].toLong() and 0xFF) shl 8) or
+                        ((this[offset + 2].toLong() and 0xFF) shl 16) or
+                        ((this[offset + 3].toLong() and 0xFF) shl 24)
+                ) and 0xFFFFFFFFL
+    }
+
+    private fun ByteArray.readAscii(offset: Int, length: Int): String {
+        if (offset >= size || length <= 0) return "Unknown"
+        val end = minOf(size, offset + length)
+        val raw = copyOfRange(offset, end)
+        val text = String(raw, Charsets.US_ASCII)
+            .trim { it == '\u0000' || it.isWhitespace() }
+        return text.ifBlank { "Unknown" }
+    }
+
+    private fun formatFirmwareVersion(raw: Long): String {
+        val a = ((raw shr 24) and 0xFF).toInt()
+        val b = ((raw shr 16) and 0xFF).toInt()
+        val c = (raw and 0xFFFF).toInt()
+        return "%d.%d.%04d".format(a, b, c)
+    }
+
+    private fun formatBtAddressLittleEndian(report: ByteArray): String {
+        if (report.size < 7) return "Not available"
+
+        val mac = listOf(
+            report[6].toInt() and 0xFF,
+            report[5].toInt() and 0xFF,
+            report[4].toInt() and 0xFF,
+            report[3].toInt() and 0xFF,
+            report[2].toInt() and 0xFF,
+            report[1].toInt() and 0xFF
+        )
+
+        if (mac.all { it == 0x00 } || mac.all { it == 0xFF }) {
+            return "Not available"
+        }
+
+        return mac.joinToString(":") { "%02X".format(it) }
+    }
+
+    private fun parseControllerDetails(
+        pairingReport: ByteArray?,
+        firmwareReport: ByteArray?,
         device: UsbDevice
     ): ParsedControllerDetails {
-        fun isProbablyAsciiPrintable(text: String): Boolean {
-            if (text.isBlank()) return false
-            return text.all { ch ->
-                ch.code in 32..126
-            }
+        val serial = device.serialNumber?.takeIf { it.isNotBlank() }
+            ?: "Not available over Android USB"
+
+        val btAddress = if (
+            pairingReport != null &&
+            pairingReport.size >= 20 &&
+            (pairingReport[0].toInt() and 0xFF) == 0x09
+        ) {
+            formatBtAddressLittleEndian(pairingReport)
+        } else {
+            "Not available"
         }
 
-        fun isProbablyFirmware(bytes: List<Int>): Boolean {
-            // 00.00.00.00 nyilván kamu
-            if (bytes.all { it == 0 }) return false
-
-            // Túl extrém / szemmel láthatóan random sem jó
-            val nonZeroCount = bytes.count { it != 0 }
-            if (nonZeroCount == 0) return false
-
-            return true
-        }
-
-        fun isProbablyBtAddress(bytes: List<Int>): Boolean {
-            if (bytes.size != 6) return false
-            if (bytes.all { it == 0x00 }) return false
-            if (bytes.all { it == 0xFF }) return false
-            return true
-        }
-
-        val serial = device.serialNumber?.takeIf { it.isNotBlank() } ?: "Not available over Android USB"
-
-        val btBytes = if (report.size >= 7) {
-            listOf(
-                report[6].toInt() and 0xFF,
-                report[5].toInt() and 0xFF,
-                report[4].toInt() and 0xFF,
-                report[3].toInt() and 0xFF,
-                report[2].toInt() and 0xFF,
-                report[1].toInt() and 0xFF
+        if (
+            firmwareReport == null ||
+            firmwareReport.size < 64 ||
+            (firmwareReport[0].toInt() and 0xFF) != 0x20
+        ) {
+            return ParsedControllerDetails(
+                serialNumber = serial,
+                btAddress = btAddress,
+                firmwareVersion = "Not available",
+                firmwareType = "Not available",
+                softwareSeries = "Not available",
+                hardwareInfo = "Not available",
+                updateVersion = "Not available",
+                buildDate = "Not available",
+                buildTime = "Not available",
+                deviceInfo = "Not available",
+                controllerColor = "Not available over current USB reports"
             )
-        } else {
-            emptyList()
         }
 
-        val btAddress =
-            if (isProbablyBtAddress(btBytes)) {
-                "%02X:%02X:%02X:%02X:%02X:%02X".format(
-                    btBytes[0],
-                    btBytes[1],
-                    btBytes[2],
-                    btBytes[3],
-                    btBytes[4],
-                    btBytes[5]
-                )
-            } else {
-                "Not reliably available"
-            }
-
-        val fwBytes = if (report.size >= 39) {
-            listOf(
-                report[38].toInt() and 0xFF,
-                report[37].toInt() and 0xFF,
-                report[36].toInt() and 0xFF,
-                report[35].toInt() and 0xFF
-            )
-        } else {
-            emptyList()
-        }
-
-        val firmwareVersion =
-            if (fwBytes.size == 4 && isProbablyFirmware(fwBytes)) {
-                "%02X.%02X.%02X.%02X".format(
-                    fwBytes[0],
-                    fwBytes[1],
-                    fwBytes[2],
-                    fwBytes[3]
-                )
-            } else {
-                "Not reliably available over current USB report"
-            }
-
-        val rawBuildDate = if (report.size >= 50) {
-            try {
-                String(report, 39, 11).trim()
-            } catch (_: Exception) {
-                ""
-            }
-        } else {
-            ""
-        }
-
-        val buildDate =
-            if (isProbablyAsciiPrintable(rawBuildDate) && rawBuildDate.length >= 4) {
-                rawBuildDate
-            } else {
-                "Not reliably available over current USB report"
-            }
-
-        // A színkód most kamu értékeket adhat, ezért csak akkor mutassuk,
-        // ha később tényleg valid USB reportot találsz rá.
-        val controllerColor = "Not reliably available over current USB report"
+        val firmwareType = firmwareReport.readLe16(20)
+        val softwareSeries = firmwareReport.readLe16(22)
+        val hardwareInfo = firmwareReport.readLe32(24)
+        val firmwareVersionRaw = firmwareReport.readLe32(28)
+        val updateVersion = firmwareReport.readLe16(44)
 
         return ParsedControllerDetails(
             serialNumber = serial,
-            firmwareVersion = firmwareVersion,
-            buildDate = buildDate,
             btAddress = btAddress,
-            controllerColor = controllerColor
+            firmwareVersion = formatFirmwareVersion(firmwareVersionRaw),
+            firmwareType = firmwareType.toString(),
+            softwareSeries = softwareSeries.toString(),
+            hardwareInfo = "0x%08X".format(hardwareInfo),
+            updateVersion = "0x%04X".format(updateVersion),
+            buildDate = firmwareReport.readAscii(1, 11),
+            buildTime = firmwareReport.readAscii(12, 8),
+            deviceInfo = firmwareReport.readAscii(32, 12),
+            controllerColor = "Not available over current USB reports"
         )
     }
+
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
@@ -772,86 +778,56 @@ class AudioControllerImpl private constructor(
         scope.launch(Dispatchers.IO) {
             SystemClock.sleep(150)
 
-            val candidateIds = listOf(
-                0x12, 0x20, 0x09, 0x05, 0x08, 0x81, 0x82
-            )
-            val candidateSizes = listOf(
-                64, 78, 96, 128, 256
-            )
+            val pairingBuffer = ByteArray(20)
+            val firmwareBuffer = ByteArray(64)
 
-            var bestId = -1
-            var bestLen = -1
-            var bestBuffer: ByteArray? = null
-
-            for (reportId in candidateIds) {
-                for (size in candidateSizes) {
-                    val buffer = ByteArray(size)
-                    val len = try {
-                        controller.primeAndGetFeatureReport(reportId, buffer)
-                    } catch (t: Throwable) {
-                        Log.e(TAG, "Feature report exception id=0x${reportId.toString(16)} size=$size", t)
-                        -1
-                    }
-
-                    val hexDump = buffer.take(minOf(buffer.size, 64))
-                        .joinToString(separator = " ") { b ->
-                            "%02X".format(b.toInt() and 0xFF)
-                        }
-
-                    Log.d(
-                        TAG,
-                        "Feature scan id=0x${reportId.toString(16).uppercase()} size=$size len=$len data=$hexDump"
-                    )
-
-                    if (len > bestLen) {
-                        bestLen = len
-                        bestId = reportId
-                        bestBuffer = buffer.copyOf()
-                    }
-
-                    SystemClock.sleep(40)
-                }
+            val pairingLen = try {
+                controller.getFeatureReport(0x09, pairingBuffer)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to read pairing report 0x09", t)
+                -1
             }
 
-            if (bestLen <= 0 || bestBuffer == null) {
-                Log.e(TAG, "No usable feature report found. bestId=$bestId bestLen=$bestLen")
-
-                _uiState.update {
-                    it.copy(
-                        serialNumber = device.serialNumber ?: "N/A",
-                        firmwareVersion = "No readable USB feature report",
-                        buildDate = "Not available",
-                        btAddress = "Not available",
-                        controllerColor = "Not available"
-                    )
-                }
-                return@launch
+            val firmwareLen = try {
+                controller.getFeatureReport(0x20, firmwareBuffer)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to read firmware report 0x20", t)
+                -1
             }
 
             Log.d(
                 TAG,
-                "Best feature report: id=0x${bestId.toString(16).uppercase()} len=$bestLen"
+                "Pairing report len=$pairingLen data=" +
+                        pairingBuffer.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
             )
 
-            // Először próbáljuk a jelenlegi ismert 0x12-es kiosztást.
-            val parsed = parseControllerDetailsFromKnownOffsets(bestBuffer, device)
+            Log.d(
+                TAG,
+                "Firmware report len=$firmwareLen data=" +
+                        firmwareBuffer.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+            )
+
+            val parsed = parseControllerDetails(
+                pairingReport = pairingBuffer.takeIf { pairingLen > 0 },
+                firmwareReport = firmwareBuffer.takeIf { firmwareLen > 0 },
+                device = device
+            )
 
             _uiState.update {
                 it.copy(
                     serialNumber = parsed.serialNumber,
-                    firmwareVersion = parsed.firmwareVersion,
-                    buildDate = parsed.buildDate,
                     btAddress = parsed.btAddress,
+                    firmwareVersion = parsed.firmwareVersion,
+                    firmwareType = parsed.firmwareType,
+                    softwareSeries = parsed.softwareSeries,
+                    hardwareInfo = parsed.hardwareInfo,
+                    updateVersion = parsed.updateVersion,
+                    buildDate = parsed.buildDate,
+                    buildTime = parsed.buildTime,
+                    deviceInfo = parsed.deviceInfo,
                     controllerColor = parsed.controllerColor
                 )
             }
-
-            Log.d(
-                TAG,
-                "Parsed controller details from best report: id=0x${bestId.toString(16).uppercase()} len=$bestLen " +
-                        "serial=${parsed.serialNumber} fw=${parsed.firmwareVersion} build=${parsed.buildDate} " +
-                        "bt=${parsed.btAddress} color=${parsed.controllerColor}"
-            )
         }
     }
 

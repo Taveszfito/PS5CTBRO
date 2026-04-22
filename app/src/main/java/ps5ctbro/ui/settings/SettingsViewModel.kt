@@ -36,11 +36,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     controllerInfo = ControllerInfo(
                         isConnected = audioState.controllerConnected,
                         isWired = audioState.isWired,
-                        firmwareVersion = audioState.firmwareVersion,
                         batteryLevel = audioState.batteryLevel,
                         serialNumber = audioState.serialNumber,
-                        buildDate = audioState.buildDate,
                         btAddress = audioState.btAddress,
+                        firmwareVersion = audioState.firmwareVersion,
+                        firmwareType = audioState.firmwareType,
+                        softwareSeries = audioState.softwareSeries,
+                        hardwareInfo = audioState.hardwareInfo,
+                        updateVersion = audioState.updateVersion,
+                        buildDate = audioState.buildDate,
+                        buildTime = audioState.buildTime,
+                        deviceInfo = audioState.deviceInfo,
                         controllerColor = audioState.controllerColor
                     )
                 ) }
