@@ -1,6 +1,28 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.material.icons.outlined.Highlight
+import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.ToggleOff
+import androidx.compose.material.icons.outlined.ToggleOn
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.Audiotrack
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.DoNotDisturbOn
+import androidx.compose.material.icons.outlined.Gradient
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,10 +32,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,20 +49,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
-import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedColor
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedEffect
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.led.PlayerLedBrightness
+
+private val LedCardBorder = Color(0xFF2B4C7E)
+private val LedPillBg = Color(0xFF14284A)
+private val LedSelectedPillBg = Color(0xFF365A97)
+private val LedLightText = Color(0xFFEAF2FF)
+private val LedAccentText = Color(0xFF7FB0FF)
 
 @Composable
 fun LedScreen(
@@ -45,7 +78,8 @@ fun LedScreen(
     onConfigChanged: (LedConfig) -> Unit,
     onApplyClick: () -> Unit,
     onRefreshConnectionClick: () -> Unit,
-    onResetClick: () -> Unit
+    onResetClick: () -> Unit,
+    showLogs: Boolean = false
 ) {
     var localConfig by remember { mutableStateOf(uiState.config) }
 
@@ -62,7 +96,11 @@ fun LedScreen(
     ) {
         LedStatusCard(
             controllerConnected = uiState.controllerConnected,
-            currentEffectRes = uiState.config.effect.titleRes
+            currentEffectRes = localConfig.effect.titleRes,
+            onRefreshConnectionClick = onRefreshConnectionClick,
+            onResetClick = {
+                onResetClick()
+            }
         )
 
         LightbarCard(
@@ -70,7 +108,8 @@ fun LedScreen(
             onConfigChanged = { updated ->
                 localConfig = updated
                 onConfigChanged(updated)
-            }
+            },
+            onApplyClick = onApplyClick
         )
 
         PlayerLedsCard(
@@ -81,46 +120,209 @@ fun LedScreen(
             }
         )
 
-        ActionsCard(
-            onRefreshConnectionClick = onRefreshConnectionClick,
-            onResetClick = onResetClick
-        )
-
-        LogCard(logText = uiState.logText)
+        if (showLogs) {
+            LogCard(logText = uiState.logText)
+        }
     }
 }
 
 @Composable
 private fun LedStatusCard(
     controllerConnected: Boolean,
-    currentEffectRes: Int
+    currentEffectRes: Int,
+    onRefreshConnectionClick: () -> Unit,
+    onResetClick: () -> Unit
 ) {
     SectionCard(title = stringResource(R.string.card_title_status)) {
-        StatusRow(
-            label = stringResource(R.string.label_controller),
-            value = if (controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFF102345),
+                border = BorderStroke(1.dp, LedCardBorder)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    StatusRowModern(
+                        icon = Icons.Outlined.SportsEsports,
+                        title = stringResource(R.string.label_controller),
+                        value = if (controllerConnected) {
+                            stringResource(R.string.status_connected)
+                        } else {
+                            stringResource(R.string.status_disconnected)
+                        },
+                        isOnline = controllerConnected,
+                        onClick = onRefreshConnectionClick
+                    )
 
-        StatusRow(
-            label = stringResource(R.string.label_active_mode),
-            value = stringResource(currentEffectRes)
-        )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color.White.copy(alpha = 0.08f)
+                    )
+
+                    StatusRowModern(
+                        icon = Icons.Outlined.GraphicEq,
+                        title = stringResource(R.string.label_active_mode),
+                        value = stringResource(currentEffectRes),
+                        isOnline = null,
+                        onClick = onResetClick
+                    )
+                }
+            }
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SmallActionButton(
+                    text = "REFRSH",
+                    icon = Icons.Outlined.Refresh,
+                    onClick = onRefreshConnectionClick
+                )
+
+                SmallActionButton(
+                    text = "RESET",
+                    icon = Icons.Outlined.RestartAlt,
+                    onClick = onResetClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusRowModern(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    isOnline: Boolean?,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(999.dp),
+            color = Color(0xFF0D1B36),
+            border = BorderStroke(1.dp, LedCardBorder)
+        ) {
+            Box(
+                modifier = Modifier.size(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = LedLightText,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelMedium,
+                color = LedAccentText,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+        }
+
+        if (isOnline != null) {
+            Spacer(modifier = Modifier.width(6.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(9.dp)
+                    .background(
+                        color = if (isOnline) Color(0xFF66E69A) else Color(0xFFFF7C7C),
+                        shape = RoundedCornerShape(999.dp)
+                    )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SmallActionButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .width(108.dp)
+            .height(53.45.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFF102345),
+        border = BorderStroke(1.dp, LedCardBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = LedAccentText,
+                modifier = Modifier.size(15.dp)
+            )
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = LedAccentText,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+        }
     }
 }
 
 @Composable
 private fun LightbarCard(
     config: LedConfig,
-    onConfigChanged: (LedConfig) -> Unit
+    onConfigChanged: (LedConfig) -> Unit,
+    onApplyClick: () -> Unit
 ) {
     SectionCard(title = stringResource(R.string.card_title_lightbar)) {
         Text(
             text = stringResource(R.string.label_effect),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         EffectSelectorRow(
             selectedEffect = config.effect,
@@ -129,13 +331,13 @@ private fun LightbarCard(
             }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .clip(MaterialTheme.shapes.medium)
+                .height(36.dp)
+                .clip(RoundedCornerShape(16.dp))
                 .background(
                     Color(
                         red = config.color.red,
@@ -145,7 +347,7 @@ private fun LightbarCard(
                 )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         AppSliderRow(
             label = stringResource(R.string.label_lightbar_brightness),
@@ -157,7 +359,7 @@ private fun LightbarCard(
         )
 
         if (config.effect == LedEffect.BREATH || config.effect == LedEffect.COLOR_CYCLE) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             AppSliderRow(
                 label = stringResource(R.string.label_effect_speed),
@@ -170,9 +372,9 @@ private fun LightbarCard(
         }
 
         if (config.effect == LedEffect.STATIC || config.effect == LedEffect.BREATH) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             AppSliderRow(
                 label = stringResource(R.string.label_red),
@@ -184,7 +386,7 @@ private fun LightbarCard(
                 valueDisplay = config.color.red.toString()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             AppSliderRow(
                 label = stringResource(R.string.label_green),
@@ -196,7 +398,7 @@ private fun LightbarCard(
                 valueDisplay = config.color.green.toString()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             AppSliderRow(
                 label = stringResource(R.string.label_blue),
@@ -208,11 +410,12 @@ private fun LightbarCard(
                 valueDisplay = config.color.blue.toString()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             PresetColorRow(
                 onColorPicked = { color ->
                     onConfigChanged(config.copy(color = color))
+                    onApplyClick()
                 }
             )
         }
@@ -224,15 +427,31 @@ private fun PlayerLedsCard(
     config: LedConfig,
     onConfigChanged: (LedConfig) -> Unit
 ) {
-    SectionCard(title = stringResource(R.string.card_title_player_leds)) {
-        Text(
-            text = stringResource(R.string.player_leds_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    var showInfoDialog by remember { mutableStateOf(false) }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
+    SectionCard(
+        title = stringResource(R.string.card_title_player_leds),
+        titleTrailing = {
+            Surface(
+                modifier = Modifier.clickable { showInfoDialog = true },
+                shape = RoundedCornerShape(999.dp),
+                color = Color(0xFF102345),
+                border = BorderStroke(1.dp, LedCardBorder)
+            ) {
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = LedAccentText,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -241,119 +460,141 @@ private fun PlayerLedsCard(
                 val bit = 1 shl index
                 val checked = (config.playerLedMask and bit) != 0
 
-                FilterChip(
+                StyledFilterChip(
                     selected = checked,
+                    text = "${index + 1}",
                     onClick = {
                         val newMask = if (checked) {
                             config.playerLedMask and bit.inv()
                         } else {
                             config.playerLedMask or bit
                         }
-
                         onConfigChanged(config.copy(playerLedMask = newMask))
                     },
-                    label = { Text("${index + 1}") },
                     modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = stringResource(R.string.label_player_led_brightness),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
         Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Highlight,
+                contentDescription = null,
+                tint = LedAccentText,
+                modifier = Modifier.size(18.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = stringResource(R.string.label_player_led_brightness),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             PlayerLedBrightness.entries.forEach { brightness ->
-                FilterChip(
+                val chipIcon = when (brightness) {
+                    PlayerLedBrightness.LOW -> Icons.Outlined.Lightbulb
+                    PlayerLedBrightness.MEDIUM -> Icons.Outlined.WbSunny
+                    PlayerLedBrightness.HIGH -> Icons.Outlined.Highlight
+                }
+
+                StyledFilterChip(
                     selected = config.playerLedBrightness == brightness,
+                    text = stringResource(brightness.titleRes),
+                    icon = chipIcon,
                     onClick = {
                         onConfigChanged(config.copy(playerLedBrightness = brightness))
                     },
-                    label = { Text(stringResource(brightness.titleRes)) },
                     modifier = Modifier.weight(1f)
                 )
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = stringResource(R.string.label_mic_led),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
 
         Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Lightbulb,
+                contentDescription = null,
+                tint = LedAccentText,
+                modifier = Modifier.size(18.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = stringResource(R.string.label_mic_led),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
+            StyledFilterChip(
                 selected = !config.micLedEnabled,
+                text = stringResource(R.string.off),
+                icon = Icons.Outlined.ToggleOff,
                 onClick = {
                     onConfigChanged(config.copy(micLedEnabled = false))
                 },
-                label = { Text(stringResource(R.string.off)) },
                 modifier = Modifier.weight(1f)
             )
 
-            FilterChip(
+            StyledFilterChip(
                 selected = config.micLedEnabled,
+                text = stringResource(R.string.on),
+                icon = Icons.Outlined.ToggleOn,
                 onClick = {
                     onConfigChanged(config.copy(micLedEnabled = true))
                 },
-                label = { Text(stringResource(R.string.on)) },
                 modifier = Modifier.weight(1f)
             )
         }
     }
-}
 
-@Composable
-private fun ActionsCard(
-    onRefreshConnectionClick: () -> Unit,
-    onResetClick: () -> Unit
-) {
-    SectionCard(title = stringResource(R.string.card_title_actions)) {
-        Text(
-            text = stringResource(R.string.actions_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    if (showInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showInfoDialog = false }) {
+                    Text("OK")
+                }
+            },
+            title = {
+                Text(text = stringResource(R.string.card_title_player_leds))
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.player_leds_description),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onRefreshConnectionClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(stringResource(R.string.button_refresh))
-            }
-
-            Button(
-                onClick = onResetClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(stringResource(R.string.button_reset))
-            }
-        }
     }
 }
 
@@ -363,55 +604,59 @@ private fun EffectSelectorRow(
     onEffectSelected: (LedEffect) -> Unit
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            FilterChip(
+            StyledFilterChip(
                 selected = selectedEffect == LedEffect.OFF,
+                text = stringResource(LedEffect.OFF.titleRes),
+                icon = Icons.Outlined.DoNotDisturbOn,
                 onClick = { onEffectSelected(LedEffect.OFF) },
-                label = { Text(stringResource(LedEffect.OFF.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
 
-            FilterChip(
+            StyledFilterChip(
                 selected = selectedEffect == LedEffect.STATIC,
+                text = stringResource(LedEffect.STATIC.titleRes),
+                icon = Icons.Outlined.Circle,
                 onClick = { onEffectSelected(LedEffect.STATIC) },
-                label = { Text(stringResource(LedEffect.STATIC.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            FilterChip(
+            StyledFilterChip(
                 selected = selectedEffect == LedEffect.BREATH,
+                text = stringResource(LedEffect.BREATH.titleRes),
+                icon = Icons.Outlined.Gradient,
                 onClick = { onEffectSelected(LedEffect.BREATH) },
-                label = { Text(stringResource(LedEffect.BREATH.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
 
-            FilterChip(
+            StyledFilterChip(
                 selected = selectedEffect == LedEffect.COLOR_CYCLE,
+                text = stringResource(LedEffect.COLOR_CYCLE.titleRes),
+                icon = Icons.Outlined.Autorenew,
                 onClick = { onEffectSelected(LedEffect.COLOR_CYCLE) },
-                label = { Text(stringResource(LedEffect.COLOR_CYCLE.titleRes)) },
                 modifier = Modifier.weight(1f)
             )
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            FilterChip(
+            StyledFilterChip(
                 selected = selectedEffect == LedEffect.MUSIC_REACTIVE,
+                text = stringResource(LedEffect.MUSIC_REACTIVE.titleRes),
+                icon = Icons.Outlined.Audiotrack,
                 onClick = { onEffectSelected(LedEffect.MUSIC_REACTIVE) },
-                label = { Text(stringResource(LedEffect.MUSIC_REACTIVE.titleRes)) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -428,18 +673,48 @@ private fun PresetColorRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PresetColorChip(stringResource(R.string.color_blue), LedColor(0, 114, 255), onColorPicked, Modifier.weight(1f))
-            PresetColorChip(stringResource(R.string.color_red), LedColor(255, 40, 40), onColorPicked, Modifier.weight(1f))
-            PresetColorChip(stringResource(R.string.color_green), LedColor(40, 255, 120), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(
+                stringResource(R.string.color_blue),
+                LedColor(0, 114, 255),
+                onColorPicked,
+                Modifier.weight(1f)
+            )
+            PresetColorChip(
+                stringResource(R.string.color_red),
+                LedColor(255, 40, 40),
+                onColorPicked,
+                Modifier.weight(1f)
+            )
+            PresetColorChip(
+                stringResource(R.string.color_green),
+                LedColor(40, 255, 120),
+                onColorPicked,
+                Modifier.weight(1f)
+            )
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PresetColorChip(stringResource(R.string.color_purple), LedColor(180, 70, 255), onColorPicked, Modifier.weight(1f))
-            PresetColorChip(stringResource(R.string.color_white), LedColor(255, 255, 255), onColorPicked, Modifier.weight(1f))
-            PresetColorChip(stringResource(R.string.color_orange), LedColor(255, 140, 0), onColorPicked, Modifier.weight(1f))
+            PresetColorChip(
+                stringResource(R.string.color_purple),
+                LedColor(180, 70, 255),
+                onColorPicked,
+                Modifier.weight(1f)
+            )
+            PresetColorChip(
+                stringResource(R.string.color_white),
+                LedColor(255, 255, 255),
+                onColorPicked,
+                Modifier.weight(1f)
+            )
+            PresetColorChip(
+                stringResource(R.string.color_orange),
+                LedColor(255, 140, 0),
+                onColorPicked,
+                Modifier.weight(1f)
+            )
         }
     }
 }
@@ -451,11 +726,77 @@ private fun PresetColorChip(
     onColorPicked: (LedColor) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FilterChip(
+    StyledFilterChip(
         selected = false,
+        text = title,
+        dotColor = Color(
+            red = color.red,
+            green = color.green,
+            blue = color.blue
+        ),
         onClick = { onColorPicked(color) },
-        label = { Text(title) },
         modifier = modifier
+    )
+}
+
+@Composable
+private fun StyledFilterChip(
+    selected: Boolean,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    dotColor: Color? = null
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                when {
+                    icon != null -> {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = if (selected) Color.White else LedAccentText,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+
+                    dotColor != null -> {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(
+                                    color = dotColor,
+                                    shape = RoundedCornerShape(999.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                }
+
+                Text(
+                    text = text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        modifier = modifier.height(38.dp),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, LedCardBorder),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = LedSelectedPillBg,
+            selectedLabelColor = Color.White,
+            containerColor = LedPillBg,
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     )
 }
 

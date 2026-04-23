@@ -244,7 +244,8 @@ fun AppRoot(
                                     onConfigChanged = onLedConfigChanged,
                                     onApplyClick = onApplyLedClick,
                                     onRefreshConnectionClick = onRefreshLedConnectionClick,
-                                    onResetClick = onResetLedClick
+                                    onResetClick = onResetLedClick,
+                                    showLogs = showLogs
                                 )
                             }
 
