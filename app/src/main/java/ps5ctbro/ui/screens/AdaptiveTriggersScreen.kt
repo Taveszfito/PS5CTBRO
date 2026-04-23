@@ -1,6 +1,9 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +14,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,7 +39,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
@@ -36,7 +49,7 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerEffect
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
-import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
+import kotlin.math.roundToInt
 
 @Composable
 fun AdaptiveTriggersScreen(
@@ -62,7 +75,9 @@ fun AdaptiveTriggersScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         TriggerStatusCard(
-            controllerConnected = uiState.controllerConnected
+            controllerConnected = uiState.controllerConnected,
+            onRefreshConnectionClick = onRefreshConnectionClick,
+            onResetClick = onResetClick
         )
 
         TriggerConfigCard(
@@ -81,11 +96,6 @@ fun AdaptiveTriggersScreen(
             }
         )
 
-        TriggerActionsCard(
-            onRefreshConnectionClick = onRefreshConnectionClick,
-            onResetClick = onResetClick
-        )
-
         if (showLogs) {
             TriggerLogCard(
                 logText = uiState.logText
@@ -96,13 +106,107 @@ fun AdaptiveTriggersScreen(
 
 @Composable
 private fun TriggerStatusCard(
-    controllerConnected: Boolean
+    controllerConnected: Boolean,
+    onRefreshConnectionClick: () -> Unit,
+    onResetClick: () -> Unit
 ) {
     SectionCard(title = stringResource(R.string.card_title_status)) {
-        StatusRow(
-            label = stringResource(R.string.label_controller),
-            value = if (controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onRefreshConnectionClick),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF183055),
+                border = BorderStroke(1.dp, Color(0xFF2B4C7E))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF14284A),
+                        border = BorderStroke(1.dp, Color(0xFF2B4C7E))
+                    ) {
+                        Box(
+                            modifier = Modifier.size(30.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.SportsEsports,
+                                contentDescription = null,
+                                tint = Color(0xFFEAF2FF),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.label_controller),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+
+                        Text(
+                            text = if (controllerConnected) {
+                                stringResource(R.string.status_connected)
+                            } else {
+                                stringResource(R.string.status_disconnected)
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF67A8FF),
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .background(
+                                color = if (controllerConnected) Color(0xFF7CFFB2) else Color(0xFFFF7C7C),
+                                shape = RoundedCornerShape(999.dp)
+                            )
+                    )
+                }
+            }
+
+            Button(
+                onClick = onResetClick,
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier
+                    .width(144.dp)
+                    .height(44.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.button_reset_triggers),
+                    maxLines = 1,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
     }
 }
 
@@ -117,11 +221,12 @@ private fun TriggerConfigCard(
     SectionCard(title = stringResource(R.string.card_title_settings)) {
         Text(
             text = stringResource(R.string.label_effect_type),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         EffectSelectorRow(
             selectedEffect = config.effect,
@@ -130,116 +235,160 @@ private fun TriggerConfigCard(
             }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TriggerCompactBar(
-            label = "L2",
-            pressedPercent = uiState.leftTriggerPressedPercent,
-            appliedConfig = uiState.leftTrigger
-        )
-
         Spacer(modifier = Modifier.height(12.dp))
 
-        TriggerCompactBar(
-            label = "R2",
-            pressedPercent = uiState.rightTriggerPressedPercent,
-            appliedConfig = uiState.rightTrigger
-        )
-
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 16.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        )
-
-        AppSliderRow(
-            label = stringResource(R.string.label_start_point),
-            value = config.startPercent.toFloat(),
-            onValueChange = { newValue ->
-                onConfigChanged(config.copy(startPercent = newValue.toInt()))
-            }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        AppSliderRow(
-            label = stringResource(R.string.label_end_point),
-            value = config.endPercent.toFloat(),
-            onValueChange = { newValue ->
-                onConfigChanged(config.copy(endPercent = newValue.toInt()))
-            }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        when (config.effect) {
-            AdaptiveTriggerEffect.RESISTANCE -> {
-                AppSliderRow(
-                    label = stringResource(R.string.label_resistance_strength),
-                    value = config.strengthPercent.toFloat(),
-                    onValueChange = { newValue ->
-                        onConfigChanged(config.copy(strengthPercent = newValue.toInt()))
-                    }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = Color(0xFF14284A),
+            border = BorderStroke(1.dp, Color(0xFF2B4C7E))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                TriggerCompactBar(
+                    label = "L2",
+                    pressedPercent = uiState.leftTriggerPressedPercent,
+                    appliedConfig = uiState.leftTrigger
                 )
-            }
 
-            AdaptiveTriggerEffect.VIBRATION -> {
-                AppSliderRow(
-                    label = stringResource(R.string.label_vibration_speed),
-                    value = config.speedPercent.toFloat(),
-                    onValueChange = { newValue ->
-                        onConfigChanged(config.copy(speedPercent = newValue.toInt()))
-                    }
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                 )
-            }
 
-            AdaptiveTriggerEffect.OFF -> {
-                // Keep UI consistent but disabled or shown as neutral if needed
+                TriggerCompactBar(
+                    label = "R2",
+                    pressedPercent = uiState.rightTriggerPressedPercent,
+                    appliedConfig = uiState.rightTrigger
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = Color(0xFF14284A),
+            border = BorderStroke(1.dp, Color(0xFF2B4C7E))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                AppSliderRow(
+                    label = stringResource(R.string.label_start_point),
+                    value = config.startPercent.toFloat(),
+                    onValueChange = { newValue ->
+                        onConfigChanged(config.copy(startPercent = newValue.roundToInt()))
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                AppSliderRow(
+                    label = stringResource(R.string.label_end_point),
+                    value = config.endPercent.toFloat(),
+                    onValueChange = { newValue ->
+                        onConfigChanged(config.copy(endPercent = newValue.roundToInt()))
+                    }
+                )
+            }
+        }
+
+        if (config.effect != AdaptiveTriggerEffect.OFF) {
+            Spacer(modifier = Modifier.height(10.dp))
+
+            when (config.effect) {
+                AdaptiveTriggerEffect.RESISTANCE -> {
+                    AppSliderRow(
+                        label = stringResource(R.string.label_resistance_strength),
+                        value = config.strengthPercent.toFloat(),
+                        onValueChange = { newValue ->
+                            onConfigChanged(config.copy(strengthPercent = newValue.roundToInt()))
+                        }
+                    )
+                }
+
+                AdaptiveTriggerEffect.VIBRATION -> {
+                    AppSliderRow(
+                        label = stringResource(R.string.label_vibration_speed),
+                        value = config.speedPercent.toFloat(),
+                        onValueChange = { newValue ->
+                            onConfigChanged(config.copy(speedPercent = newValue.roundToInt()))
+                        }
+                    )
+                }
+
+                AdaptiveTriggerEffect.OFF -> Unit
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
                 onClick = { onApplyL2(config) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(stringResource(R.string.button_apply_l2))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.FileDownload,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.button_apply_l2),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
 
             Button(
                 onClick = { onApplyR2(config) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(stringResource(R.string.button_apply_r2))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.FileDownload,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.button_apply_r2),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun TriggerActionsCard(
-    onRefreshConnectionClick: () -> Unit,
-    onResetClick: () -> Unit
-) {
-    SectionCard(title = stringResource(R.string.card_title_other_actions)) {
-        Button(
-            onClick = onRefreshConnectionClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.button_refresh_connection))
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = onResetClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.button_reset_triggers))
         }
     }
 }
@@ -251,20 +400,50 @@ private fun EffectSelectorRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         FilterChip(
             selected = selectedEffect == AdaptiveTriggerEffect.RESISTANCE,
             onClick = { onEffectSelected(AdaptiveTriggerEffect.RESISTANCE) },
-            label = { Text(stringResource(AdaptiveTriggerEffect.RESISTANCE.titleRes)) },
-            modifier = Modifier.weight(1f)
+            label = {
+                Text(
+                    text = stringResource(AdaptiveTriggerEffect.RESISTANCE.titleRes),
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            modifier = Modifier
+                .weight(1f)
+                .height(40.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFF2B4C7E)),
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = Color(0xFF2B4C7E),
+                selectedLabelColor = Color.White,
+                containerColor = Color(0xFF14284A),
+                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         )
 
         FilterChip(
             selected = selectedEffect == AdaptiveTriggerEffect.VIBRATION,
             onClick = { onEffectSelected(AdaptiveTriggerEffect.VIBRATION) },
-            label = { Text(stringResource(AdaptiveTriggerEffect.VIBRATION.titleRes)) },
-            modifier = Modifier.weight(1f)
+            label = {
+                Text(
+                    text = stringResource(AdaptiveTriggerEffect.VIBRATION.titleRes),
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            modifier = Modifier
+                .weight(1f)
+                .height(40.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFF2B4C7E)),
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = Color(0xFF2B4C7E),
+                selectedLabelColor = Color.White,
+                containerColor = Color(0xFF14284A),
+                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         )
     }
 }
@@ -305,18 +484,20 @@ private fun TriggerCompactBar(
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold
             )
 
             Text(
                 text = "$pressedPercent%",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         CompactRangeBar(
             pressedPercent = pressedPercent,
@@ -339,37 +520,41 @@ private fun CompactRangeBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(24.dp)
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .height(18.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(Color(0xFF0C1D3A))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(clampedPressed / 100f)
-                .height(24.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                .height(18.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth((clampedEnd - clampedStart).coerceAtLeast(1) / 100f)
-                .height(24.dp)
-                .offset(x = (clampedStart * 3).dp) // This multiplier might be problematic on different screen widths, but keeping logic
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+                .height(18.dp)
+                .offset(x = (clampedStart * 3).dp)
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.24f))
         )
+    }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(24.dp)
-                .padding(horizontal = 8.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = "$clampedPressed%   |   $clampedStart% → $clampedEnd%",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+    Spacer(modifier = Modifier.height(6.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "0%",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.85f)
+        )
+        Text(
+            text = "100%",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.85f)
+        )
     }
 }
