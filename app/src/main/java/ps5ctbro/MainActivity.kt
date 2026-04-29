@@ -1,5 +1,9 @@
 package com.DueBoysenberry1226.ps5ctbro
 
+import android.view.View
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionType
+import android.view.MotionEvent
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionViewModel
 import android.Manifest
 import android.content.Intent
 import android.os.Build
@@ -33,6 +37,9 @@ class MainActivity : AppCompatActivity() {
     private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
     private val ledViewModel: LedViewModel by viewModels()
     private val inputTestViewModel: InputTestViewModel by viewModels()
+    private var inputTestScreenVisible = false
+    private var pointerCaptureActive = false
+    private val controllerConnectionViewModel: ControllerConnectionViewModel by viewModels()
     private val vibrationViewModel: VibrationViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
 
@@ -64,6 +71,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            window.decorView.setOnCapturedPointerListener { _: View, event: MotionEvent ->
+                inputTestViewModel.onBluetoothMotionEvent(event)
+            }
+        }
+
         // Sync system volume UI with our MediaSession
         lifecycleScope.launch {
             viewModel.uiState.collect { state ->
@@ -82,8 +95,10 @@ class MainActivity : AppCompatActivity() {
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
                 val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
                 val inputTestUiState by inputTestViewModel.uiState.collectAsStateWithLifecycle()
+                val btTouchpadSensitivity by inputTestViewModel.btTouchpadSensitivity.collectAsStateWithLifecycle()
                 val vibrationUiState by vibrationViewModel.uiState.collectAsStateWithLifecycle()
                 val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                val controllerConnectionUiState by controllerConnectionViewModel.uiState.collectAsStateWithLifecycle()
 
                 AppRoot(
                     speakerUiState = speakerUiState,
@@ -91,6 +106,10 @@ class MainActivity : AppCompatActivity() {
                     ledUiState = ledUiState,
                     inputTestUiState = inputTestUiState,
                     vibrationUiState = vibrationUiState,
+                    controllerConnectionUiState = controllerConnectionUiState,
+                    onRefreshControllerConnectionClick = controllerConnectionViewModel::refresh,
+                    btTouchpadSensitivity = btTouchpadSensitivity,
+                    onBtTouchpadSensitivityChange = inputTestViewModel::setBtTouchpadSensitivity,
                     settingsUiState = settingsUiState,
                     onStartStreamClick = ::handleStartStreamClick,
                     onStopStreamClick = ::handleStopStreamClick,
@@ -130,8 +149,19 @@ class MainActivity : AppCompatActivity() {
                     onApplyLedClick = ledViewModel::applyCurrentState,
                     onRefreshLedConnectionClick = ledViewModel::refreshConnection,
                     onResetLedClick = ledViewModel::resetToDefault,
-                    onInputTestScreenVisible = inputTestViewModel::onScreenVisible,
-                    onInputTestScreenHidden = inputTestViewModel::onScreenHidden,
+                    onInputTestScreenVisible = {
+                        inputTestScreenVisible = true
+                        inputTestViewModel.onScreenVisible()
+
+                        if (controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH) {
+                            requestInputTestPointerCapture()
+                        }
+                    },
+                    onInputTestScreenHidden = {
+                        inputTestScreenVisible = false
+                        inputTestViewModel.onScreenHidden()
+                        releaseInputTestPointerCapture()
+                    },
                     onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection,
                     onVibrationScreenVisible = vibrationViewModel::onScreenVisible,
                     onVibrationScreenHidden = vibrationViewModel::onScreenHidden,
@@ -149,6 +179,40 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+    }
+
+    private fun requestInputTestPointerCapture() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (pointerCaptureActive) return
+
+        window.decorView.requestPointerCapture()
+        pointerCaptureActive = true
+    }
+
+    private fun releaseInputTestPointerCapture() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (!pointerCaptureActive) return
+
+        window.decorView.releasePointerCapture()
+        pointerCaptureActive = false
+    }
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (inputTestScreenVisible) {
+            if (inputTestViewModel.onBluetoothMotionEvent(event)) {
+                return true
+            }
+        }
+
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (inputTestViewModel.onBluetoothKeyEvent(event)) {
+            return true
+        }
+
+        return super.dispatchKeyEvent(event)
     }
 
     // Removed manual volume key interception to allow system to show the custom MediaSession volume slider

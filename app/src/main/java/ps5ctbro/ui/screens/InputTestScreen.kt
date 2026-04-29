@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,7 +39,10 @@ import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.TriggerState
 fun InputTestScreen(
     uiState: InputTestUiState,
     onRefreshConnectionClick: () -> Unit,
-    showLogs: Boolean = false
+    showLogs: Boolean = false,
+    showBtTouchpadSensitivity: Boolean = false,
+    btTouchpadSensitivity: Float = 6f,
+    onBtTouchpadSensitivityChange: (Float) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -100,7 +104,10 @@ fun InputTestScreen(
 
         TouchpadCard(
             touch1 = uiState.touch1,
-            touch2 = uiState.touch2
+            touch2 = uiState.touch2,
+            showBtTouchpadSensitivity = showBtTouchpadSensitivity,
+            btTouchpadSensitivity = btTouchpadSensitivity,
+            onBtTouchpadSensitivityChange = onBtTouchpadSensitivityChange
         )
 
         StickCard(
@@ -132,7 +139,10 @@ fun InputTestScreen(
 @Composable
 private fun TouchpadCard(
     touch1: TouchpadPoint,
-    touch2: TouchpadPoint
+    touch2: TouchpadPoint,
+    showBtTouchpadSensitivity: Boolean,
+    btTouchpadSensitivity: Float,
+    onBtTouchpadSensitivityChange: (Float) -> Unit
 ) {
     SectionCard(title = "Touchpad") {
         Column(
@@ -170,6 +180,38 @@ private fun TouchpadCard(
                             center = Offset(x, y)
                         )
                     }
+                }
+            }
+
+            if (showBtTouchpadSensitivity) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Pötty érzékenység",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Text(
+                            text = "${btTouchpadSensitivity.toInt()}x",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+
+                    Slider(
+                        value = btTouchpadSensitivity,
+                        onValueChange = onBtTouchpadSensitivityChange,
+                        valueRange = 1f..20f,
+                        steps = 18,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 

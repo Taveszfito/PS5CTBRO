@@ -1,5 +1,7 @@
 package com.DueBoysenberry1226.ps5ctbro.ui
 
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionType
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionUiState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,9 +55,13 @@ fun AppRoot(
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
     ledUiState: LedUiState,
     inputTestUiState: InputTestUiState,
+    btTouchpadSensitivity: Float,
+    onBtTouchpadSensitivityChange: (Float) -> Unit,
     vibrationUiState: VibrationUiState,
     settingsUiState: SettingsUiState,
     onStartStreamClick: () -> Unit,
+    controllerConnectionUiState: ControllerConnectionUiState,
+    onRefreshControllerConnectionClick: () -> Unit,
     onStopStreamClick: () -> Unit,
     onApplySpeakerRouteClick: () -> Unit,
     onVolumeStepChanged: (Int) -> Unit,
@@ -187,6 +193,13 @@ fun AppRoot(
                             }
                         },
                         actions = {
+                            MiniInfoPill(
+                                text = controllerConnectionUiState.shortLabel,
+                                modifier = Modifier
+                                    .padding(end = 6.dp)
+                                    .clickable(onClick = onRefreshControllerConnectionClick)
+                            )
+
                             if (currentSection == AppSection.MOTION_SENSORS) {
                                 MiniInfoPill(
                                     text = if (inputTestUiState.controllerConnected) "● Aktív" else "● Offline",
@@ -253,7 +266,10 @@ fun AppRoot(
                                 InputTestScreen(
                                     uiState = inputTestUiState,
                                     onRefreshConnectionClick = onRefreshInputTestConnectionClick,
-                                    showLogs = showLogs
+                                    showLogs = showLogs,
+                                    showBtTouchpadSensitivity = controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH,
+                                    btTouchpadSensitivity = btTouchpadSensitivity,
+                                    onBtTouchpadSensitivityChange = onBtTouchpadSensitivityChange
                                 )
                             }
 
