@@ -68,6 +68,7 @@ This enables controller-only audio playback, even though Android does not suppor
   - Audio streaming
   - Adaptive triggers
   - LED control
+  - Gyroscope test
 
 ### Bluetooth
 - Limited support
