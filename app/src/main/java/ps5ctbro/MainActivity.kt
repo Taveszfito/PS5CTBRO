@@ -71,9 +71,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            window.decorView.setOnCapturedPointerListener { _: View, event: MotionEvent ->
-                inputTestViewModel.onBluetoothMotionEvent(event)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val hasBluetoothConnectPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!hasBluetoothConnectPermission) {
+                requestPermissions(
+                    arrayOf(Manifest.permission.BLUETOOTH_CONNECT),
+                    1001
+                )
             }
         }
 

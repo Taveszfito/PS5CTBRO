@@ -38,6 +38,7 @@ class BtVibrationController(
     private var heartbeatJob: Job? = null
 
     private var activeVibrator: Vibrator? = null
+    private val hidOutputProbe = BtHidOutputProbe(appContext)
 
     init {
         startHeartbeat()
@@ -86,8 +87,16 @@ class BtVibrationController(
         _uiState.update {
             it.copy(
                 controllerConnected = true,
-                logText = "BT DualSense vibration készen áll. device=${device.name}"
+                logText = "BT DualSense vibration készen áll. device=${device.name}\n\nBT HID probe fut..."
             )
+        }
+
+        hidOutputProbe.probe { result ->
+            _uiState.update {
+                it.copy(
+                    logText = "BT DualSense vibration készen áll. device=${device.name}\n\n$result"
+                )
+            }
         }
     }
 

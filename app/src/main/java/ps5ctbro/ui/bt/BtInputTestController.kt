@@ -127,7 +127,14 @@ class BtInputTestController(
                 r2 = triggerFromAxis(r2),
                 pressedButtons = pressedKeys.toList(),
                 logText = "BT input aktív.",
-                rawReportInfo = "BT motion | lx=${fmt(leftX)} ly=${fmt(leftY)} rx=${fmt(rightX)} ry=${fmt(rightY)} l2=${fmt(l2)} r2=${fmt(r2)}"
+                rawReportInfo = buildString {
+                    appendLine(
+                        "BT motion | lx=${fmt(leftX)} ly=${fmt(leftY)} " +
+                                "rx=${fmt(rightX)} ry=${fmt(rightY)} " +
+                                "l2=${fmt(l2)} r2=${fmt(r2)}"
+                    )
+                    append(buildBtAxisDebug(event))
+                }
             )
         }
 
@@ -149,7 +156,7 @@ class BtInputTestController(
         val dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y)
 
         val hasRelative =
-            kotlin.math.abs(dx) > 0.001f || kotlin.math.abs(dy) > 0.001f
+            abs(dx) > 0.001f || abs(dy) > 0.001f
 
         if (hasRelative) {
             virtualTouchX = (virtualTouchX + dx * touchpadSensitivity).coerceIn(0f, 1919f)
@@ -172,7 +179,8 @@ class BtInputTestController(
                 ),
                 touch2 = TouchpadPoint(),
                 logText = "BT touchpad relatív mozgás érzékelve.",
-                rawReportInfo = "BT touch-like | dx=${fmt(dx)} dy=${fmt(dy)} x=${virtualTouchX.roundToInt()} y=${virtualTouchY.roundToInt()} active=$active"
+                rawReportInfo = "BT touch-like | dx=${fmt(dx)} dy=${fmt(dy)} " +
+                        "x=${virtualTouchX.roundToInt()} y=${virtualTouchY.roundToInt()} active=$active"
             )
         }
 
@@ -338,8 +346,37 @@ class BtInputTestController(
         }
     }
 
+    private fun buildBtAxisDebug(event: MotionEvent): String {
+        val axes = listOf(
+            MotionEvent.AXIS_X,
+            MotionEvent.AXIS_Y,
+            MotionEvent.AXIS_Z,
+            MotionEvent.AXIS_RX,
+            MotionEvent.AXIS_RY,
+            MotionEvent.AXIS_RZ,
+            MotionEvent.AXIS_LTRIGGER,
+            MotionEvent.AXIS_RTRIGGER,
+            MotionEvent.AXIS_HAT_X,
+            MotionEvent.AXIS_HAT_Y,
+            MotionEvent.AXIS_GAS,
+            MotionEvent.AXIS_BRAKE,
+            MotionEvent.AXIS_DISTANCE,
+            MotionEvent.AXIS_TILT,
+            MotionEvent.AXIS_SCROLL,
+            MotionEvent.AXIS_RELATIVE_X,
+            MotionEvent.AXIS_RELATIVE_Y
+        )
+
+        return axes.joinToString(
+            separator = "\n",
+            prefix = "BT axes:\n"
+        ) { axis ->
+            "axis $axis = ${fmt(event.getAxisValue(axis))}"
+        }
+    }
+
     private fun fmt(value: Float): String {
-        return "%.2f".format(value)
+        return "%.3f".format(value)
     }
 
     companion object {
