@@ -1,7 +1,11 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,7 +79,8 @@ fun SpeakerScreen(
     onRouteCh4Changed: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
     onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
-    showLogs: Boolean
+    showLogs: Boolean,
+    isBtMode: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -93,7 +99,8 @@ fun SpeakerScreen(
             isStreaming = uiState.isStreaming,
             onStartStreamClick = onStartStreamClick,
             onStopStreamClick = onStopStreamClick,
-            onApplySpeakerRouteClick = onApplySpeakerRouteClick
+            onApplySpeakerRouteClick = onApplySpeakerRouteClick,
+            enabled = !isBtMode
         )
 
         ChannelRoutesCard(
@@ -104,7 +111,8 @@ fun SpeakerScreen(
             onRouteCh1Changed = onRouteCh1Changed,
             onRouteCh2Changed = onRouteCh2Changed,
             onRouteCh3Changed = onRouteCh3Changed,
-            onRouteCh4Changed = onRouteCh4Changed
+            onRouteCh4Changed = onRouteCh4Changed,
+            enabled = !isBtMode
         )
 
         VolumeCard(
@@ -114,7 +122,8 @@ fun SpeakerScreen(
             onVolumeStepChanged = onVolumeStepChanged,
             onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
             onHardwareVolumeButtonsControlControllerChanged =
-                onHardwareVolumeButtonsControlControllerChanged
+                onHardwareVolumeButtonsControlControllerChanged,
+            enabled = !isBtMode
         )
 
         if (showLogs) {
@@ -258,9 +267,13 @@ private fun ActionsCard(
     isStreaming: Boolean,
     onStartStreamClick: () -> Unit,
     onStopStreamClick: () -> Unit,
-    onApplySpeakerRouteClick: () -> Unit
+    onApplySpeakerRouteClick: () -> Unit,
+    enabled: Boolean
 ) {
-    SectionCard(title = stringResource(R.string.card_title_main_actions)) {
+    SectionCard(
+        title = stringResource(R.string.card_title_main_actions),
+        enabled = enabled
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -335,10 +348,12 @@ private fun ChannelRoutesCard(
     onRouteCh1Changed: (Boolean) -> Unit,
     onRouteCh2Changed: (Boolean) -> Unit,
     onRouteCh3Changed: (Boolean) -> Unit,
-    onRouteCh4Changed: (Boolean) -> Unit
+    onRouteCh4Changed: (Boolean) -> Unit,
+    enabled: Boolean
 ) {
     SectionCard(
         title = stringResource(R.string.card_title_audio_channels),
+        enabled = enabled,
         titleTrailing = {
             Icon(
                 imageVector = Icons.Outlined.Tune,
@@ -468,96 +483,104 @@ private fun VolumeCard(
     hardwareVolumeButtonsControlController: Boolean,
     onVolumeStepChanged: (Int) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
-    onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit
+    onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
+    enabled: Boolean
 ) {
     val isDistorted = volumeStep >= 8
 
-    SectionCard(title = stringResource(R.string.label_volume)) {
-        AppSliderRow(
-            label = stringResource(R.string.label_volume),
-            value = volumeStep.toFloat(),
-            onValueChange = { rawValue ->
-                onVolumeStepChanged(rawValue.roundToInt().coerceIn(0, 10))
-            },
-            valueRange = 0f..10f,
-            steps = 9,
-            valueDisplay = volumeStep.toString(),
-            isError = isDistorted
-        )
-
-        if (isDistorted) {
-            Text(
-                text = stringResource(R.string.msg_volume_distortion),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SectionCard(
+            title = stringResource(R.string.label_volume),
+            enabled = enabled
+        ) {
+            AppSliderRow(
+                label = stringResource(R.string.label_volume),
+                value = volumeStep.toFloat(),
+                onValueChange = { rawValue ->
+                    onVolumeStepChanged(rawValue.roundToInt().coerceIn(0, 10))
+                },
+                valueRange = 0f..10f,
+                steps = 9,
+                valueDisplay = volumeStep.toString(),
+                isError = isDistorted
             )
+
+            if (isDistorted) {
+                Text(
+                    text = stringResource(R.string.msg_volume_distortion),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { onVolumeStepChanged((volumeStep - 1).coerceAtLeast(0)) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Remove,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Button(
+                    onClick = { onVolumeStepChanged((volumeStep + 1).coerceAtMost(10)) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
-                onClick = { onVolumeStepChanged((volumeStep - 1).coerceAtLeast(0)) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Remove,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            BottomToggleCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Outlined.VolumeOff,
+                line1 = "Mute",
+                line2 = "phone",
+                checked = mutePhoneWhileStreaming,
+                onCheckedChange = onMutePhoneWhileStreamingChanged,
+                enabled = enabled
+            )
 
-            Button(
-                onClick = { onVolumeStepChanged((volumeStep + 1).coerceAtMost(10)) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            BottomToggleCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Outlined.Settings,
+                line1 = "HW vol.",
+                line2 = "buttons",
+                checked = hardwareVolumeButtonsControlController,
+                onCheckedChange = onHardwareVolumeButtonsControlControllerChanged,
+                enabled = enabled
+            )
         }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        BottomToggleCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.VolumeOff,
-            line1 = "Mute",
-            line2 = "phone",
-            checked = mutePhoneWhileStreaming,
-            onCheckedChange = onMutePhoneWhileStreamingChanged
-        )
-
-        BottomToggleCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.Settings,
-            line1 = "HW vol.",
-            line2 = "buttons",
-            checked = hardwareVolumeButtonsControlController,
-            onCheckedChange = onHardwareVolumeButtonsControlControllerChanged
-        )
     }
 }
 
@@ -568,60 +591,78 @@ private fun BottomToggleCard(
     line1: String,
     line2: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(76.dp)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+    val shape = RoundedCornerShape(20.dp)
+    Box(modifier = modifier) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = shape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color(0xFF9BC0FF),
-                modifier = Modifier.size(22.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(76.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = line1,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF9BC0FF),
+                    modifier = Modifier.size(22.dp)
                 )
-                Text(
-                    text = line2,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.82f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = line1,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = line2,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.82f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    modifier = Modifier.scale(0.74f),
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 )
             }
+        }
 
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                modifier = Modifier.scale(0.74f),
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+        if (!enabled) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(shape)
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
             )
         }
     }

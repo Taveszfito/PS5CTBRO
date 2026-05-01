@@ -200,14 +200,7 @@ fun AppRoot(
                                     .clickable(onClick = onRefreshControllerConnectionClick)
                             )
 
-                            if (currentSection == AppSection.MOTION_SENSORS) {
-                                MiniInfoPill(
-                                    text = if (inputTestUiState.controllerConnected) "● Aktív" else "● Offline",
-                                    modifier = Modifier
-                                        .padding(end = 6.dp)
-                                        .clickable(onClick = onRefreshInputTestConnectionClick)
-                                )
-                            }
+
                         }
                     )
                 }
@@ -225,6 +218,7 @@ fun AppRoot(
                             AppSection.SPEAKER -> {
                                 SpeakerScreen(
                                     uiState = speakerUiState,
+                                    isBtMode = controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH,
                                     onStartStreamClick = onStartStreamClick,
                                     onStopStreamClick = onStopStreamClick,
                                     onApplySpeakerRouteClick = onApplySpeakerRouteClick,
@@ -242,6 +236,7 @@ fun AppRoot(
                             AppSection.ADAPTIVE_TRIGGERS -> {
                                 AdaptiveTriggersScreen(
                                     uiState = adaptiveTriggersUiState,
+                                    isBtMode = controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH,
                                     onLeftTriggerChanged = onLeftTriggerChanged,
                                     onRightTriggerChanged = onRightTriggerChanged,
                                     onApplyClick = onApplyTriggersClick,
@@ -254,6 +249,7 @@ fun AppRoot(
                             AppSection.LEDS -> {
                                 LedScreen(
                                     uiState = ledUiState,
+                                    isBtMode = controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH,
                                     onConfigChanged = onLedConfigChanged,
                                     onApplyClick = onApplyLedClick,
                                     onRefreshConnectionClick = onRefreshLedConnectionClick,
@@ -276,6 +272,7 @@ fun AppRoot(
                             AppSection.MOTION_SENSORS -> {
                                 MotionSensorsScreen(
                                     uiState = inputTestUiState,
+                                    isBtMode = controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH,
                                     onRefreshConnectionClick = onRefreshInputTestConnectionClick,
                                     showLogs = showLogs
                                 )
@@ -292,7 +289,8 @@ fun AppRoot(
                                     onApplyRight = onApplyVibrationRight,
                                     onStopClick = onStopVibrationClick,
                                     onRefreshConnectionClick = onRefreshVibrationConnectionClick,
-                                    showLogs = showLogs
+                                    showLogs = showLogs,
+                                    isBtMode = controllerConnectionUiState.type == ControllerConnectionType.BLUETOOTH
                                 )
                             }
 

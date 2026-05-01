@@ -1,5 +1,7 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.settings
 
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionType
+
 data class SettingsUiState(
     val currentLanguage: String = "auto", // "auto", "en", "hu"
     val appVersion: String = "",
@@ -10,6 +12,8 @@ data class SettingsUiState(
 
 data class ControllerInfo(
     val isConnected: Boolean = false,
+    val connectionType: ControllerConnectionType = ControllerConnectionType.NONE,
+    val deviceName: String? = null,
     val isWired: Boolean = true,
     val batteryLevel: Int = 0,
     val serialNumber: String = "Not queried yet",

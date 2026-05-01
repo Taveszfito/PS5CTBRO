@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,8 +23,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,10 +52,15 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.components.GlassPanel
 import com.DueBoysenberry1226.ps5ctbro.ui.components.MiniInfoPill
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SmallActionButton
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRowModern
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.BlueBright
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.CyanAxis
@@ -86,6 +98,7 @@ data class MotionOrientationState(
 @Composable
 fun MotionSensorsScreen(
     uiState: InputTestUiState,
+    isBtMode: Boolean,
     onRefreshConnectionClick: () -> Unit,
     showLogs: Boolean = false
 ) {
@@ -111,8 +124,14 @@ fun MotionSensorsScreen(
         uiState.accel.x,
         uiState.accel.y,
         uiState.accel.z,
-        uiState.controllerConnected
+        uiState.controllerConnected,
+        isBtMode
     ) {
+        if (isBtMode || !uiState.controllerConnected) {
+            lastSampleNanos = 0L
+            return@LaunchedEffect
+        }
+
         val now = System.nanoTime()
         val ax = uiState.accel.x.toFloat()
         val ay = uiState.accel.y.toFloat()
@@ -186,30 +205,34 @@ fun MotionSensorsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Valós idejű giroszkóp adatok",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextMutedDark
+        MotionStatusCard(
+            controllerConnected = uiState.controllerConnected && !isBtMode,
+            onRefreshConnectionClick = onRefreshConnectionClick,
+            onResetReference = onResetReference
         )
 
         OrientationVisualizerCard(
             orientation = orientationState,
+            enabled = !isBtMode,
             onResetReference = onResetReference
         )
 
         AxisSummarySection(
-            orientation = orientationState
+            orientation = orientationState,
+            enabled = !isBtMode
         )
 
         RealtimeGraphCard(
-            orientation = orientationState
+            orientation = orientationState,
+            enabled = !isBtMode
         )
 
         BottomDetailsRow(
-            orientation = orientationState
+            orientation = orientationState,
+            enabled = !isBtMode
         )
 
         InfoCard()
@@ -224,11 +247,61 @@ fun MotionSensorsScreen(
 }
 
 @Composable
-private fun OrientationVisualizerCard(
-    orientation: MotionOrientationState,
+private fun MotionStatusCard(
+    controllerConnected: Boolean,
+    onRefreshConnectionClick: () -> Unit,
     onResetReference: () -> Unit
 ) {
-    GlassPanel(contentPadding = 14) {
+    SectionCard(title = stringResource(R.string.card_title_status)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFF102345),
+                border = BorderStroke(1.dp, Color(0xFF2B4C7E))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    StatusRowModern(
+                        icon = Icons.Outlined.SportsEsports,
+                        title = stringResource(R.string.label_controller),
+                        value = if (controllerConnected) {
+                            stringResource(R.string.status_connected)
+                        } else {
+                            stringResource(R.string.status_disconnected)
+                        },
+                        isOnline = controllerConnected,
+                        onClick = onRefreshConnectionClick
+                    )
+                }
+            }
+
+            SmallActionButton(
+                text = stringResource(R.string.button_refresh),
+                icon = Icons.Outlined.Refresh,
+                onClick = onRefreshConnectionClick,
+                modifier = Modifier.height(56.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrientationVisualizerCard(
+    orientation: MotionOrientationState,
+    enabled: Boolean,
+    onResetReference: () -> Unit
+) {
+    GlassPanel(contentPadding = 14, enabled = enabled) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -493,7 +566,8 @@ private fun MiniIconPill(
 
 @Composable
 private fun AxisSummarySection(
-    orientation: MotionOrientationState
+    orientation: MotionOrientationState,
+    enabled: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -504,7 +578,8 @@ private fun AxisSummarySection(
             title = "X tengely",
             value = formatAxisValue(orientation.gyroXRate),
             axisColor = RedAxis,
-            history = orientation.xRateHistory
+            history = orientation.xRateHistory,
+            enabled = enabled
         )
 
         CompactAxisMetricCard(
@@ -512,7 +587,8 @@ private fun AxisSummarySection(
             title = "Y tengely",
             value = formatAxisValue(orientation.gyroYRate),
             axisColor = GreenAxis,
-            history = orientation.yRateHistory
+            history = orientation.yRateHistory,
+            enabled = enabled
         )
 
         CompactAxisMetricCard(
@@ -520,7 +596,8 @@ private fun AxisSummarySection(
             title = "Z tengely",
             value = formatAxisValue(orientation.gyroZRate),
             axisColor = CyanAxis,
-            history = orientation.zRateHistory
+            history = orientation.zRateHistory,
+            enabled = enabled
         )
     }
 }
@@ -531,11 +608,13 @@ private fun CompactAxisMetricCard(
     title: String,
     value: String,
     axisColor: Color,
-    history: List<Float>
+    history: List<Float>,
+    enabled: Boolean
 ) {
     GlassPanel(
         modifier = modifier.aspectRatio(1f),
-        contentPadding = 10
+        contentPadding = 10,
+        enabled = enabled
     ) {
         Text(
             text = title,
@@ -585,9 +664,10 @@ private fun CompactAxisMetricCard(
 
 @Composable
 private fun RealtimeGraphCard(
-    orientation: MotionOrientationState
+    orientation: MotionOrientationState,
+    enabled: Boolean
 ) {
-    GlassPanel(contentPadding = 14) {
+    GlassPanel(contentPadding = 14, enabled = enabled) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -723,7 +803,8 @@ private fun LegendDot(
 
 @Composable
 private fun BottomDetailsRow(
-    orientation: MotionOrientationState
+    orientation: MotionOrientationState,
+    enabled: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -732,12 +813,14 @@ private fun BottomDetailsRow(
     ) {
         OrientationDetailsCard(
             modifier = Modifier.weight(1f),
-            orientation = orientation
+            orientation = orientation,
+            enabled = enabled
         )
 
         ControllerViewCard(
             modifier = Modifier.weight(1f),
-            orientation = orientation
+            orientation = orientation,
+            enabled = enabled
         )
     }
 }
@@ -745,11 +828,13 @@ private fun BottomDetailsRow(
 @Composable
 private fun OrientationDetailsCard(
     modifier: Modifier = Modifier,
-    orientation: MotionOrientationState
+    orientation: MotionOrientationState,
+    enabled: Boolean
 ) {
     GlassPanel(
         modifier = modifier,
-        contentPadding = 14
+        contentPadding = 14,
+        enabled = enabled
     ) {
         Text(
             text = "Orientáció (Eulerek szögek)",
@@ -902,11 +987,13 @@ private fun EulerBar(
 @Composable
 private fun ControllerViewCard(
     modifier: Modifier = Modifier,
-    orientation: MotionOrientationState
+    orientation: MotionOrientationState,
+    enabled: Boolean
 ) {
     GlassPanel(
         modifier = modifier,
-        contentPadding = 14
+        contentPadding = 14,
+        enabled = enabled
     ) {
         Text(
             text = "Kontroller nézet",

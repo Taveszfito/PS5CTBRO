@@ -7,7 +7,8 @@ enum class ControllerConnectionType {
 }
 
 data class ControllerConnectionUiState(
-    val type: ControllerConnectionType = ControllerConnectionType.NONE
+    val type: ControllerConnectionType = ControllerConnectionType.NONE,
+    val deviceName: String? = null
 ) {
     val isConnected: Boolean
         get() = type != ControllerConnectionType.NONE

@@ -54,13 +54,21 @@ class ControllerConnectionRepository private constructor(
     }
 
     fun refresh() {
+        var deviceName: String? = null
         val type = when {
-            hasUsbDualSense() -> ControllerConnectionType.USB
-            hasInputDualSense() -> ControllerConnectionType.BLUETOOTH
+            hasUsbDualSense() -> {
+                deviceName = "DualSense (USB)"
+                ControllerConnectionType.USB
+            }
+            hasInputDualSense() -> {
+                val device = getBtDualSenseDevice()
+                deviceName = device?.name ?: "Wireless Controller"
+                ControllerConnectionType.BLUETOOTH
+            }
             else -> ControllerConnectionType.NONE
         }
 
-        _uiState.value = ControllerConnectionUiState(type = type)
+        _uiState.value = ControllerConnectionUiState(type = type, deviceName = deviceName)
     }
 
     override fun onInputDeviceAdded(deviceId: Int) {
@@ -90,14 +98,12 @@ class ControllerConnectionRepository private constructor(
         return false
     }
 
-    private fun hasInputDualSense(): Boolean {
+    private fun getBtDualSenseDevice(): InputDevice? {
         val ids: IntArray = InputDevice.getDeviceIds()
 
         for (id: Int in ids) {
             val device: InputDevice = InputDevice.getDevice(id) ?: continue
-
             val sources: Int = device.sources
-
             val isGamepad =
                 sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
                         sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
@@ -105,7 +111,6 @@ class ControllerConnectionRepository private constructor(
             if (!isGamepad) continue
 
             val name = device.name.orEmpty().lowercase()
-
             val isSony =
                 device.vendorId == SONY_VENDOR_ID ||
                         name.contains("dualsense") ||
@@ -113,11 +118,15 @@ class ControllerConnectionRepository private constructor(
                         name.contains("dualshock")
 
             if (isSony) {
-                return true
+                return device
             }
         }
 
-        return false
+        return null
+    }
+
+    private fun hasInputDualSense(): Boolean {
+        return getBtDualSenseDevice() != null
     }
 
     companion object {

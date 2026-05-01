@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRowModern
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SmallActionButton
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedColor
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedEffect
@@ -75,6 +77,7 @@ private val LedAccentText = Color(0xFF7FB0FF)
 @Composable
 fun LedScreen(
     uiState: LedUiState,
+    isBtMode: Boolean,
     onConfigChanged: (LedConfig) -> Unit,
     onApplyClick: () -> Unit,
     onRefreshConnectionClick: () -> Unit,
@@ -105,6 +108,7 @@ fun LedScreen(
 
         LightbarCard(
             config = localConfig,
+            enabled = !isBtMode,
             onConfigChanged = { updated ->
                 localConfig = updated
                 onConfigChanged(updated)
@@ -114,6 +118,7 @@ fun LedScreen(
 
         PlayerLedsCard(
             config = localConfig,
+            enabled = !isBtMode,
             onConfigChanged = { updated ->
                 localConfig = updated
                 onConfigChanged(updated)
@@ -143,7 +148,7 @@ private fun LedStatusCard(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(18.dp),
                 color = Color(0xFF102345),
-                border = BorderStroke(1.dp, LedCardBorder)
+                border = BorderStroke(1.dp, Color(0xFF2B4C7E))
             ) {
                 Column(
                     modifier = Modifier
@@ -181,13 +186,13 @@ private fun LedStatusCard(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 SmallActionButton(
-                    text = "REFRSH",
+                    text = stringResource(R.string.button_refresh),
                     icon = Icons.Outlined.Refresh,
                     onClick = onRefreshConnectionClick
                 )
 
                 SmallActionButton(
-                    text = "RESET",
+                    text = stringResource(R.string.button_reset),
                     icon = Icons.Outlined.RestartAlt,
                     onClick = onResetClick
                 )
@@ -197,124 +202,16 @@ private fun LedStatusCard(
 }
 
 @Composable
-private fun StatusRowModern(
-    icon: ImageVector,
-    title: String,
-    value: String,
-    isOnline: Boolean?,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            shape = RoundedCornerShape(999.dp),
-            color = Color(0xFF0D1B36),
-            border = BorderStroke(1.dp, LedCardBorder)
-        ) {
-            Box(
-                modifier = Modifier.size(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = LedLightText,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelMedium,
-                color = LedAccentText,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-        }
-
-        if (isOnline != null) {
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(9.dp)
-                    .background(
-                        color = if (isOnline) Color(0xFF66E69A) else Color(0xFFFF7C7C),
-                        shape = RoundedCornerShape(999.dp)
-                    )
-            )
-        }
-    }
-}
-
-@Composable
-private fun SmallActionButton(
-    text: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .width(108.dp)
-            .height(53.45.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF102345),
-        border = BorderStroke(1.dp, LedCardBorder)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = LedAccentText,
-                modifier = Modifier.size(15.dp)
-            )
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall,
-                color = LedAccentText,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
 private fun LightbarCard(
     config: LedConfig,
+    enabled: Boolean,
     onConfigChanged: (LedConfig) -> Unit,
     onApplyClick: () -> Unit
 ) {
-    SectionCard(title = stringResource(R.string.card_title_lightbar)) {
+    SectionCard(
+        title = stringResource(R.string.card_title_lightbar),
+        enabled = enabled
+    ) {
         Text(
             text = stringResource(R.string.label_effect),
             style = MaterialTheme.typography.titleMedium,
@@ -425,12 +322,14 @@ private fun LightbarCard(
 @Composable
 private fun PlayerLedsCard(
     config: LedConfig,
+    enabled: Boolean,
     onConfigChanged: (LedConfig) -> Unit
 ) {
     var showInfoDialog by remember { mutableStateOf(false) }
 
     SectionCard(
         title = stringResource(R.string.card_title_player_leds),
+        enabled = enabled,
         titleTrailing = {
             Surface(
                 modifier = Modifier.clickable { showInfoDialog = true },

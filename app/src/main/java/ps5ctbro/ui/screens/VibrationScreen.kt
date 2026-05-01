@@ -1,19 +1,29 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSwitchRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
-import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SmallActionButton
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRowModern
 import com.DueBoysenberry1226.ps5ctbro.ui.vibrate.VibrationUiState
 
 @Composable
@@ -27,7 +37,8 @@ fun VibrationScreen(
     onApplyRight: () -> Unit,
     onStopClick: () -> Unit,
     onRefreshConnectionClick: () -> Unit,
-    showLogs: Boolean
+    showLogs: Boolean,
+    isBtMode: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -36,14 +47,16 @@ fun VibrationScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        SectionCard(title = stringResource(R.string.card_title_status)) {
-            StatusRow(
-                label = stringResource(R.string.label_controller),
-                value = if (uiState.controllerConnected) stringResource(R.string.status_connected) else stringResource(R.string.status_disconnected)
-            )
-        }
+        VibrationStatusCard(
+            controllerConnected = uiState.controllerConnected,
+            isBtMode = isBtMode,
+            onRefreshConnectionClick = onRefreshConnectionClick
+        )
 
-        SectionCard(title = stringResource(R.string.card_title_settings)) {
+        SectionCard(
+            title = stringResource(R.string.card_title_settings),
+            enabled = true
+        ) {
             val durationEnabled = !uiState.isInfinite
 
             // Bal Rezgés Erőssége
@@ -95,7 +108,7 @@ fun VibrationScreen(
                 onValueChange = { onDurationChanged(it.toInt()) },
                 valueRange = 1f..60f,
                 valueDisplay = stringResource(R.string.duration_custom, uiState.durationSeconds),
-                modifier = Modifier.alphaIf(!durationEnabled)
+                modifier = Modifier.graphicsLayer { alpha = if (durationEnabled) 1f else 0.38f }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -171,4 +184,51 @@ fun VibrationScreen(
     }
 }
 
-private fun Modifier.alphaIf(condition: Boolean): Modifier = if (condition) this.then(Modifier.graphicsLayer { alpha = 0.38f }) else this
+@Composable
+private fun VibrationStatusCard(
+    controllerConnected: Boolean,
+    isBtMode: Boolean,
+    onRefreshConnectionClick: () -> Unit
+) {
+    SectionCard(title = stringResource(R.string.card_title_status)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFF102345),
+                border = BorderStroke(1.dp, Color(0xFF2B4C7E))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    StatusRowModern(
+                        icon = Icons.Outlined.SportsEsports,
+                        title = stringResource(R.string.label_controller),
+                        value = if (controllerConnected) {
+                            stringResource(R.string.status_connected)
+                        } else {
+                            stringResource(R.string.status_disconnected)
+                        },
+                        isOnline = controllerConnected,
+                        onClick = onRefreshConnectionClick
+                    )
+                }
+            }
+
+            SmallActionButton(
+                text = stringResource(R.string.button_refresh),
+                icon = Icons.Outlined.Refresh,
+                onClick = onRefreshConnectionClick,
+                modifier = Modifier.height(56.dp)
+            )
+        }
+    }
+}

@@ -21,6 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -49,6 +52,8 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerEffect
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
+import com.DueBoysenberry1226.ps5ctbro.ui.components.SmallActionButton
+import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRowModern
 import kotlin.math.roundToInt
 
 @Composable
@@ -59,7 +64,8 @@ fun AdaptiveTriggersScreen(
     onApplyClick: () -> Unit,
     onRefreshConnectionClick: () -> Unit,
     onResetClick: () -> Unit,
-    showLogs: Boolean = false
+    showLogs: Boolean = false,
+    isBtMode: Boolean = false
 ) {
     var localConfig by remember { mutableStateOf(uiState.leftTrigger) }
 
@@ -93,7 +99,8 @@ fun AdaptiveTriggersScreen(
             onApplyR2 = { config ->
                 onRightTriggerChanged(config)
                 onApplyClick()
-            }
+            },
+            enabled = !isBtMode
         )
 
         if (showLogs) {
@@ -114,96 +121,59 @@ private fun TriggerStatusCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClick = onRefreshConnectionClick),
-                shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF183055),
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFF102345),
                 border = BorderStroke(1.dp, Color(0xFF2B4C7E))
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFF14284A),
-                        border = BorderStroke(1.dp, Color(0xFF2B4C7E))
-                    ) {
-                        Box(
-                            modifier = Modifier.size(30.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.SportsEsports,
-                                contentDescription = null,
-                                tint = Color(0xFFEAF2FF),
-                                modifier = Modifier.size(15.dp)
-                            )
-                        }
-                    }
+                    StatusRowModern(
+                        icon = Icons.Outlined.SportsEsports,
+                        title = stringResource(R.string.label_controller),
+                        value = if (controllerConnected) {
+                            stringResource(R.string.status_connected)
+                        } else {
+                            stringResource(R.string.status_disconnected)
+                        },
+                        isOnline = controllerConnected,
+                        onClick = onRefreshConnectionClick
+                    )
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color.White.copy(alpha = 0.08f)
+                    )
 
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.label_controller),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-
-                        Text(
-                            text = if (controllerConnected) {
-                                stringResource(R.string.status_connected)
-                            } else {
-                                stringResource(R.string.status_disconnected)
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF67A8FF),
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .size(9.dp)
-                            .background(
-                                color = if (controllerConnected) Color(0xFF7CFFB2) else Color(0xFFFF7C7C),
-                                shape = RoundedCornerShape(999.dp)
-                            )
+                    StatusRowModern(
+                        icon = Icons.Outlined.Settings,
+                        title = stringResource(R.string.label_adaptive_triggers_status),
+                        value = stringResource(R.string.status_active_configuration),
+                        isOnline = null,
+                        onClick = onResetClick
                     )
                 }
             }
 
-            Button(
-                onClick = onResetClick,
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .width(144.dp)
-                    .height(44.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.button_reset_triggers),
-                    maxLines = 1,
-                    style = MaterialTheme.typography.labelLarge
+                SmallActionButton(
+                    text = stringResource(R.string.button_refresh),
+                    icon = Icons.Outlined.Refresh,
+                    onClick = onRefreshConnectionClick
+                )
+
+                SmallActionButton(
+                    text = stringResource(R.string.button_reset),
+                    icon = Icons.Outlined.RestartAlt,
+                    onClick = onResetClick
                 )
             }
         }
@@ -216,9 +186,13 @@ private fun TriggerConfigCard(
     uiState: AdaptiveTriggersUiState,
     onConfigChanged: (AdaptiveTriggerConfig) -> Unit,
     onApplyL2: (AdaptiveTriggerConfig) -> Unit,
-    onApplyR2: (AdaptiveTriggerConfig) -> Unit
+    onApplyR2: (AdaptiveTriggerConfig) -> Unit,
+    enabled: Boolean = true
 ) {
-    SectionCard(title = stringResource(R.string.card_title_settings)) {
+    SectionCard(
+        title = stringResource(R.string.card_title_settings),
+        enabled = enabled
+    ) {
         Text(
             text = stringResource(R.string.label_effect_type),
             style = MaterialTheme.typography.titleSmall,

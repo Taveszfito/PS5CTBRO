@@ -181,6 +181,7 @@
 
     <string name="card_title_controller_info">Kontrollerem adatai</string>
     <string name="label_connection_status">Csatlakozás állapota</string>
+    <string name="label_device_name">Eszköz neve</string>
     <string name="label_connection_type">Csatlakozás típusa</string>
     <string name="label_firmware_version">Firmware verzió</string>
     <string name="label_battery_level">Akkumulátor töltöttség</string>
@@ -204,4 +205,15 @@
 
     <string name="dialog_info_title">Hibaelhárítás</string>
     <string name="dialog_info_body">Ha a stream nem indul el:\n\n• Ellenőrizd, hogy minden szükséges engedély meg van adva az alkalmazásnak\n• Győződj meg róla, hogy az akkumulátor-kezelés nem korlátozza a háttérben futást\n\nA streamet mindig teljes képernyős (full screen) módban indítsd, ne egyetlen alkalmazás rögzítésével.\n\nHa továbbra sincs hang:\n\n• Csatlakoztasd újra a kontrollert\n• Indítás előtt nyomd meg a „Speaker Route alkalmazása” gombot\n• Ezután próbáld újra a streamet</string>
+    <string name="status_vibration_testing">Tesztelés alatt</string>
+    <string name="status_bt_restricted">BT Korlátozott</string>
+    <string name="label_vibration">Rezgés</string>
+    <string name="label_input_test">Input Teszt</string>
+    <string name="status_monitoring">Figyelés alatt</string>
+    <string name="label_adaptive_triggers_status">Adaptive Triggerek</string>
+    <string name="status_active_configuration">Aktív Konfiguráció</string>
+    <string name="label_gyroscope">Giroszkóp</string>
+    <string name="label_sensor_status">Szenzor Állapot</string>
+    <string name="status_active_60hz">Aktív (60Hz)</string>
+    <string name="msg_wired_mode_only">Csak vezetékes módban támogatott.</string>
 </resources>

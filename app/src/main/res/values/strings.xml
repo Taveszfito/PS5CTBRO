@@ -201,6 +201,7 @@
 
     <string name="card_title_controller_info">About my controller</string>
     <string name="label_connection_status">Connection status</string>
+    <string name="label_device_name">Device name</string>
     <string name="label_connection_type">Connection type</string>
     <string name="label_firmware_version">Firmware version</string>
     <string name="label_battery_level">Battery level</string>
@@ -224,4 +225,15 @@
 
     <string name="dialog_info_title">Troubleshooting</string>
     <string name="dialog_info_body">If the stream doesn’t start:\n\n• Make sure all required permissions are granted\n• Ensure battery optimization is not restricting the app in the background\n\nAlways start the stream in full screen mode, not by capturing a single app.\n\nIf there is still no sound:\n\n• Reconnect the controller\n• Press "Apply Speaker Route" before starting\n• Then try starting the stream again</string>
+    <string name="status_vibration_testing">Testing</string>
+    <string name="status_bt_restricted">BT Restricted</string>
+    <string name="label_vibration">Vibration</string>
+    <string name="label_input_test">Input Test</string>
+    <string name="status_monitoring">Monitoring</string>
+    <string name="label_adaptive_triggers_status">Adaptive Triggers</string>
+    <string name="status_active_configuration">Active Configuration</string>
+    <string name="label_gyroscope">Gyroscope</string>
+    <string name="label_sensor_status">Sensor Status</string>
+    <string name="status_active_60hz">Active (60Hz)</string>
+    <string name="msg_wired_mode_only">Supported in wired mode only.</string>
 </resources>

@@ -71,6 +71,12 @@ private fun ControllerInfoCard(info: com.DueBoysenberry1226.ps5ctbro.ui.settings
                     label = stringResource(R.string.label_connection_status),
                     value = stringResource(R.string.status_connected)
                 )
+                if (info.deviceName != null) {
+                    InfoItem(
+                        label = stringResource(R.string.label_device_name),
+                        value = info.deviceName
+                    )
+                }
                 InfoItem(
                     label = stringResource(R.string.label_connection_type),
                     value = stringResource(if (info.isWired) R.string.value_wired else R.string.value_wireless)
