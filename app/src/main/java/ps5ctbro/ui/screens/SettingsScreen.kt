@@ -8,7 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -27,7 +32,8 @@ fun SettingsScreen(
     uiState: SettingsUiState,
     onLanguageSelected: (String) -> Unit,
     onGainChanged: (Float) -> Unit,
-    onShowLogWindowsChanged: (Boolean) -> Unit
+    onShowLogWindowsChanged: (Boolean) -> Unit,
+    onRefreshControllerInfo: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -48,7 +54,8 @@ fun SettingsScreen(
         )
 
         ControllerInfoCard(
-            info = uiState.controllerInfo
+            info = uiState.controllerInfo,
+            onRefresh = onRefreshControllerInfo
         )
 
         AboutCard(
@@ -58,8 +65,22 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ControllerInfoCard(info: com.DueBoysenberry1226.ps5ctbro.ui.settings.ControllerInfo?) {
-    SectionCard(title = stringResource(R.string.card_title_controller_info)) {
+private fun ControllerInfoCard(
+    info: com.DueBoysenberry1226.ps5ctbro.ui.settings.ControllerInfo?,
+    onRefresh: () -> Unit
+) {
+    SectionCard(
+        title = stringResource(R.string.card_title_controller_info),
+        titleTrailing = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    ) {
         if (info == null || !info.isConnected) {
             StatusRow(
                 label = stringResource(R.string.label_connection_status),
@@ -71,7 +92,7 @@ private fun ControllerInfoCard(info: com.DueBoysenberry1226.ps5ctbro.ui.settings
                     label = stringResource(R.string.label_connection_status),
                     value = stringResource(R.string.status_connected)
                 )
-                if (info.deviceName != null) {
+                if (!info.deviceName.isNullOrBlank()) {
                     InfoItem(
                         label = stringResource(R.string.label_device_name),
                         value = info.deviceName
@@ -81,42 +102,57 @@ private fun ControllerInfoCard(info: com.DueBoysenberry1226.ps5ctbro.ui.settings
                     label = stringResource(R.string.label_connection_type),
                     value = stringResource(if (info.isWired) R.string.value_wired else R.string.value_wireless)
                 )
-                InfoItem(
-                    label = stringResource(R.string.label_bt_address),
-                    value = info.btAddress
-                )
-                InfoItem(
-                    label = stringResource(R.string.label_firmware_version),
-                    value = info.firmwareVersion
-                )
-                InfoItem(
-                    label = "Firmware type",
-                    value = info.firmwareType
-                )
-                InfoItem(
-                    label = "Software series",
-                    value = info.softwareSeries
-                )
-                InfoItem(
-                    label = "Hardware info",
-                    value = info.hardwareInfo
-                )
-                InfoItem(
-                    label = "Update version",
-                    value = info.updateVersion
-                )
-                InfoItem(
-                    label = stringResource(R.string.label_build_date),
-                    value = info.buildDate
-                )
-                InfoItem(
-                    label = "Build time",
-                    value = info.buildTime
-                )
-                InfoItem(
-                    label = stringResource(R.string.label_battery_level),
-                    value = "${info.batteryLevel}%"
-                )
+
+                // Bluetooth vagy USB adatok megjelenítése szűrve
+                val notQueried = stringResource(R.string.label_not_queried)
+                val notAvailable = stringResource(R.string.label_not_available)
+                val unknown = stringResource(R.string.label_unknown)
+
+                fun isValueValid(value: String?): Boolean {
+                    if (value.isNullOrBlank()) return false
+                    if (value == notQueried) return false
+                    val lower = value.lowercase()
+                    if (lower.contains(notAvailable.lowercase())) return false
+                    if (lower.contains(unknown.lowercase())) return false
+                    if (value == "00:00:00:00:00:00") return false
+                    return true
+                }
+
+                if (isValueValid(info.btAddress)) {
+                    InfoItem(label = stringResource(R.string.label_bt_address), value = info.btAddress)
+                }
+                if (isValueValid(info.firmwareVersion)) {
+                    InfoItem(label = stringResource(R.string.label_firmware_version), value = info.firmwareVersion)
+                }
+                if (isValueValid(info.firmwareType)) {
+                    InfoItem(label = stringResource(R.string.label_firmware_type), value = info.firmwareType)
+                }
+                if (isValueValid(info.softwareSeries)) {
+                    InfoItem(label = stringResource(R.string.label_software_series), value = info.softwareSeries)
+                }
+                if (isValueValid(info.hardwareInfo)) {
+                    InfoItem(label = stringResource(R.string.label_hardware_info), value = info.hardwareInfo)
+                }
+                if (isValueValid(info.buildDate)) {
+                    InfoItem(label = stringResource(R.string.label_build_date), value = info.buildDate)
+                }
+                if (isValueValid(info.buildTime)) {
+                    InfoItem(label = stringResource(R.string.label_build_time), value = info.buildTime)
+                }
+                if (isValueValid(info.updateVersion)) {
+                    InfoItem(label = stringResource(R.string.label_update_version), value = info.updateVersion)
+                }
+                if (isValueValid(info.serialNumber)) {
+                    InfoItem(label = stringResource(R.string.label_serial_number), value = info.serialNumber)
+                }
+
+                // Akkumulátor: Megjelenítjük, ha van értelmes adatunk (0-nál nagyobb)
+                if (info.batteryLevel > 0) {
+                    InfoItem(
+                        label = stringResource(R.string.label_battery_level),
+                        value = "${info.batteryLevel}%"
+                    )
+                }
             }
         }
     }

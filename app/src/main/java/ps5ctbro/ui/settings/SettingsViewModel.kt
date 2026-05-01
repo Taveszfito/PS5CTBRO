@@ -37,6 +37,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             audioController.uiState,
             connectionRepository.uiState
         ) { audioState, connectionState ->
+            val battery = if (connectionState.type == ControllerConnectionType.BLUETOOTH && connectionState.batteryLevel >= 0) {
+                connectionState.batteryLevel
+            } else {
+                audioState.batteryLevel
+            }
+
+            val address = if (connectionState.type == ControllerConnectionType.BLUETOOTH && !connectionState.btAddress.isNullOrBlank()) {
+                connectionState.btAddress
+            } else {
+                audioState.btAddress
+            }
+
             _uiState.update { it.copy(
                 audioGain = audioState.audioGain,
                 controllerInfo = ControllerInfo(
@@ -44,9 +56,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     connectionType = connectionState.type,
                     deviceName = connectionState.deviceName,
                     isWired = connectionState.type == ControllerConnectionType.USB,
-                    batteryLevel = audioState.batteryLevel,
+                    batteryLevel = battery,
                     serialNumber = audioState.serialNumber,
-                    btAddress = audioState.btAddress,
+                    btAddress = address,
                     firmwareVersion = audioState.firmwareVersion,
                     firmwareType = audioState.firmwareType,
                     softwareSeries = audioState.softwareSeries,
@@ -91,6 +103,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setAudioGain(gain: Float) {
         audioController.setAudioGain(gain)
+    }
+
+    fun refreshControllerInfo() {
+        connectionRepository.refresh()
     }
 
     fun setShowLogWindows(show: Boolean) {

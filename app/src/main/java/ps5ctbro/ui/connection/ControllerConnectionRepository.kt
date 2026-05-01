@@ -1,5 +1,7 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.connection
 
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,6 +11,7 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.view.InputDevice
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,10 +26,13 @@ class ControllerConnectionRepository private constructor(
     private val inputManager =
         appContext.getSystemService(Context.INPUT_SERVICE) as InputManager
 
+    private val bluetoothManager =
+        appContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+
     private val _uiState = MutableStateFlow(ControllerConnectionUiState())
     val uiState: StateFlow<ControllerConnectionUiState> = _uiState.asStateFlow()
 
-    private val usbReceiver = object : BroadcastReceiver() {
+    private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             refresh()
         }
@@ -38,16 +44,19 @@ class ControllerConnectionRepository private constructor(
         val filter = IntentFilter().apply {
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            addAction("android.bluetooth.device.action.BATTERY_LEVEL_CHANGED")
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             appContext.registerReceiver(
-                usbReceiver,
+                receiver,
                 filter,
                 Context.RECEIVER_NOT_EXPORTED
             )
         } else {
-            appContext.registerReceiver(usbReceiver, filter)
+            appContext.registerReceiver(receiver, filter)
         }
 
         refresh()
@@ -55,20 +64,55 @@ class ControllerConnectionRepository private constructor(
 
     fun refresh() {
         var deviceName: String? = null
+        var btAddress: String? = null
+        var batteryLevel: Int = -1
+        
         val type = when {
             hasUsbDualSense() -> {
                 deviceName = "DualSense (USB)"
                 ControllerConnectionType.USB
             }
             hasInputDualSense() -> {
-                val device = getBtDualSenseDevice()
-                deviceName = device?.name ?: "Wireless Controller"
+                val inputDevice = getBtDualSenseDevice()
+                deviceName = inputDevice?.name ?: "Wireless Controller"
+                
+                // Megpróbáljuk megkeresni a Bluetooth eszközt a rendszerben a név alapján
+                val btDevice = findBluetoothDeviceByName(deviceName)
+                if (btDevice != null) {
+                    btAddress = btDevice.address
+                    // A getBatteryLevel() csak API 28+ felett érhető el megbízhatóan
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        try {
+                            batteryLevel = btDevice.javaClass.getMethod("getBatteryLevel").invoke(btDevice) as Int
+                        } catch (e: Exception) {
+                            // ignore
+                        }
+                    }
+                }
+                
                 ControllerConnectionType.BLUETOOTH
             }
             else -> ControllerConnectionType.NONE
         }
 
-        _uiState.value = ControllerConnectionUiState(type = type, deviceName = deviceName)
+        _uiState.value = ControllerConnectionUiState(
+            type = type, 
+            deviceName = deviceName,
+            btAddress = btAddress,
+            batteryLevel = batteryLevel
+        )
+    }
+
+    private fun findBluetoothDeviceByName(name: String): BluetoothDevice? {
+        try {
+            val adapter = bluetoothManager.adapter ?: return null
+            val pairedDevices = adapter.bondedDevices
+            return pairedDevices.find { 
+                it.name == name || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && it.alias == name)
+            }
+        } catch (e: SecurityException) {
+            return null
+        }
     }
 
     override fun onInputDeviceAdded(deviceId: Int) {

@@ -316,7 +316,7 @@ private fun OrientationVisualizerCard(
                 )
 
                 Text(
-                    text = "Valós idejű orientáció",
+                    text = stringResource(R.string.label_realtime_orientation),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
@@ -333,7 +333,7 @@ private fun OrientationVisualizerCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Undo,
-                        contentDescription = "Reset nézet",
+                        contentDescription = stringResource(R.string.content_desc_reset_view),
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(15.dp)
                     )
@@ -519,14 +519,14 @@ private fun OrientationVisualizerCard(
                     .padding(bottom = 14.dp)
             ) {
                 Text(
-                    text = "Dőlés: ${orientation.roll.toInt()}°",
+                    text = stringResource(R.string.label_roll_value, orientation.roll.toInt()),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "Pitch ${orientation.pitch.toInt()}° • Yaw ${orientation.yaw.toInt()}°",
+                    text = stringResource(R.string.label_pitch_yaw_value, orientation.pitch.toInt(), orientation.yaw.toInt()),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMutedDark,
                     modifier = Modifier.padding(top = 3.dp)
@@ -575,7 +575,7 @@ private fun AxisSummarySection(
     ) {
         CompactAxisMetricCard(
             modifier = Modifier.weight(1f),
-            title = "X tengely",
+            title = stringResource(R.string.label_axis_x),
             value = formatAxisValue(orientation.gyroXRate),
             axisColor = RedAxis,
             history = orientation.xRateHistory,
@@ -584,7 +584,7 @@ private fun AxisSummarySection(
 
         CompactAxisMetricCard(
             modifier = Modifier.weight(1f),
-            title = "Y tengely",
+            title = stringResource(R.string.label_axis_y),
             value = formatAxisValue(orientation.gyroYRate),
             axisColor = GreenAxis,
             history = orientation.yRateHistory,
@@ -593,7 +593,7 @@ private fun AxisSummarySection(
 
         CompactAxisMetricCard(
             modifier = Modifier.weight(1f),
-            title = "Z tengely",
+            title = stringResource(R.string.label_axis_z),
             value = formatAxisValue(orientation.gyroZRate),
             axisColor = CyanAxis,
             history = orientation.zRateHistory,
@@ -632,7 +632,7 @@ private fun CompactAxisMetricCard(
         )
 
         Text(
-            text = "Fordulatszám",
+            text = stringResource(R.string.label_rotation_rate),
             style = MaterialTheme.typography.labelMedium,
             color = TextMutedDark,
             modifier = Modifier.padding(top = 2.dp)
@@ -674,14 +674,14 @@ private fun RealtimeGraphCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Valós idejű grafikon",
+                text = stringResource(R.string.label_realtime_graph),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "Időtartam: 10 mp",
+                text = stringResource(R.string.label_graph_duration),
                 style = MaterialTheme.typography.bodySmall,
                 color = TextMutedDark
             )
@@ -771,11 +771,11 @@ private fun RealtimeGraphCard(
                 .padding(top = 10.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            LegendDot("X tengely", RedAxis)
+            LegendDot(stringResource(R.string.label_axis_x), RedAxis)
             Box(modifier = Modifier.width(16.dp))
-            LegendDot("Y tengely", GreenAxis)
+            LegendDot(stringResource(R.string.label_axis_y), GreenAxis)
             Box(modifier = Modifier.width(16.dp))
-            LegendDot("Z tengely", CyanAxis)
+            LegendDot(stringResource(R.string.label_axis_z), CyanAxis)
         }
     }
 }
@@ -837,7 +837,7 @@ private fun OrientationDetailsCard(
         enabled = enabled
     ) {
         Text(
-            text = "Orientáció (Eulerek szögek)",
+            text = stringResource(R.string.label_orientation_euler),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
@@ -847,9 +847,9 @@ private fun OrientationDetailsCard(
             modifier = Modifier.padding(top = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            EulerBar(label = "Dőlés (X)", value = orientation.roll, color = RedAxis)
-            EulerBar(label = "Bólintás (Y)", value = orientation.pitch, color = GreenAxis)
-            EulerBar(label = "Irány (Z)", value = orientation.yaw, color = CyanAxis)
+            EulerBar(label = stringResource(R.string.label_roll_x), value = orientation.roll, color = RedAxis)
+            EulerBar(label = stringResource(R.string.label_pitch_y), value = orientation.pitch, color = GreenAxis)
+            EulerBar(label = stringResource(R.string.label_yaw_z), value = orientation.yaw, color = CyanAxis)
         }
 
         AxisAngleSummaryRow(
@@ -860,7 +860,7 @@ private fun OrientationDetailsCard(
         )
 
         Text(
-            text = "Gyorsulás nagyság: ${orientation.accelMagnitude.toInt()}",
+            text = stringResource(R.string.label_accel_magnitude, orientation.accelMagnitude.toInt()),
             color = TextMutedDark,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 10.dp)
@@ -996,7 +996,7 @@ private fun ControllerViewCard(
         enabled = enabled
     ) {
         Text(
-            text = "Kontroller nézet",
+            text = stringResource(R.string.label_controller_view),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
@@ -1012,12 +1012,12 @@ private fun ControllerViewCard(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ToggleChip(
-                text = "3D nézet",
+                text = stringResource(R.string.label_3d_view),
                 selected = true,
                 modifier = Modifier.weight(1f)
             )
             ToggleChip(
-                text = "Fentről nézet",
+                text = stringResource(R.string.label_top_view),
                 selected = false,
                 modifier = Modifier.weight(1f)
             )
@@ -1214,14 +1214,14 @@ private fun InfoCard() {
                 modifier = Modifier.padding(start = 10.dp)
             ) {
                 Text(
-                    text = "Információ",
+                    text = stringResource(R.string.label_information),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "Mozgasd a kontrollert a giroszkóp adatok valós idejű megtekintéséhez.",
+                    text = stringResource(R.string.msg_gyro_instruction),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMutedDark,
                     modifier = Modifier.padding(top = 2.dp)
@@ -1238,14 +1238,14 @@ private fun DebugLogsCard(
 ) {
     GlassPanel(contentPadding = 14) {
         Text(
-            text = "Debug",
+            text = stringResource(R.string.label_debug),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
 
         Text(
-            text = logText.ifBlank { "Nincs log." },
+            text = logText.ifBlank { stringResource(R.string.msg_no_logs) },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 10.dp)

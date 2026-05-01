@@ -146,7 +146,7 @@ private fun StatusCard(
             IconButton(onClick = { showInfoDialog = true }) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "Status info",
+                    contentDescription = stringResource(R.string.content_desc_status_info),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -182,7 +182,7 @@ private fun StatusCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.VolumeUp,
                 shortLabel = stringResource(R.string.label_volume),
-                value = "$volumeStep/10"
+                value = stringResource(R.string.label_volume_level_short, volumeStep)
             )
         }
     }
@@ -192,7 +192,7 @@ private fun StatusCard(
             onDismissRequest = { showInfoDialog = false },
             confirmButton = {
                 TextButton(onClick = { showInfoDialog = false }) {
-                    Text(text = "OK")
+                    Text(text = stringResource(R.string.button_ok))
                 }
             },
             title = {
@@ -369,7 +369,7 @@ private fun ChannelRoutesCard(
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.GraphicEq,
-                line1 = "Channel",
+                line1 = stringResource(R.string.label_channel_abbr),
                 line2 = "1",
                 checked = routeCh1,
                 onCheckedChange = onRouteCh1Changed
@@ -377,7 +377,7 @@ private fun ChannelRoutesCard(
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.VolumeUp,
-                line1 = "Speaker",
+                line1 = stringResource(R.string.label_speaker_abbr),
                 line2 = "",
                 checked = routeCh2,
                 onCheckedChange = onRouteCh2Changed
@@ -385,7 +385,7 @@ private fun ChannelRoutesCard(
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Waves,
-                line1 = "Left Vib",
+                line1 = stringResource(R.string.label_left_vib_abbr),
                 line2 = "",
                 checked = routeCh3,
                 onCheckedChange = onRouteCh3Changed
@@ -393,7 +393,7 @@ private fun ChannelRoutesCard(
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Waves,
-                line1 = "Right Vib",
+                line1 = stringResource(R.string.label_right_vib_abbr),
                 line2 = "",
                 checked = routeCh4,
                 onCheckedChange = onRouteCh4Changed
@@ -564,8 +564,8 @@ private fun VolumeCard(
             BottomToggleCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.VolumeOff,
-                line1 = "Mute",
-                line2 = "phone",
+                line1 = stringResource(R.string.label_mute_abbr),
+                line2 = stringResource(R.string.label_phone_abbr),
                 checked = mutePhoneWhileStreaming,
                 onCheckedChange = onMutePhoneWhileStreamingChanged,
                 enabled = enabled
@@ -574,8 +574,8 @@ private fun VolumeCard(
             BottomToggleCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Settings,
-                line1 = "HW vol.",
-                line2 = "buttons",
+                line1 = stringResource(R.string.label_hw_vol_abbr),
+                line2 = stringResource(R.string.label_buttons_abbr),
                 checked = hardwareVolumeButtonsControlController,
                 onCheckedChange = onHardwareVolumeButtonsControlControllerChanged,
                 enabled = enabled

@@ -299,7 +299,8 @@ fun AppRoot(
                                     uiState = settingsUiState,
                                     onLanguageSelected = onLanguageSelected,
                                     onGainChanged = onGainChanged,
-                                    onShowLogWindowsChanged = onShowLogWindowsChanged
+                                    onShowLogWindowsChanged = onShowLogWindowsChanged,
+                                    onRefreshControllerInfo = onRefreshControllerConnectionClick
                                 )
                             }
                         }

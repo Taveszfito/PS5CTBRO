@@ -64,7 +64,7 @@ fun InputTestScreen(
         )
 
         if (showLogs) {
-            SectionCard(title = "Log") {
+            SectionCard(title = stringResource(R.string.label_debug)) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -72,7 +72,7 @@ fun InputTestScreen(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = uiState.logText,
+                            text = if (uiState.logText.isBlank()) stringResource(R.string.msg_no_logs) else uiState.logText,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -105,12 +105,12 @@ fun InputTestScreen(
         )
 
         TriggerCard(
-            title = "L2",
+            title = stringResource(R.string.label_l2),
             trigger = uiState.l2
         )
 
         TriggerCard(
-            title = "R2",
+            title = stringResource(R.string.label_r2),
             trigger = uiState.r2
         )
 
@@ -176,7 +176,7 @@ private fun TouchpadCard(
     btTouchpadSensitivity: Float,
     onBtTouchpadSensitivityChange: (Float) -> Unit
 ) {
-    SectionCard(title = "Touchpad") {
+    SectionCard(title = stringResource(R.string.label_touchpad)) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -225,7 +225,7 @@ private fun TouchpadCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Pötty érzékenység",
+                            text = stringResource(R.string.label_touchpad_sensitivity),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -251,8 +251,8 @@ private fun TouchpadCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TouchpadPointInfo(label = "T1", point = touch1)
-                TouchpadPointInfo(label = "T2", point = touch2)
+                TouchpadPointInfo(label = stringResource(R.string.label_t1), point = touch1)
+                TouchpadPointInfo(label = stringResource(R.string.label_t2), point = touch2)
             }
         }
     }
@@ -265,13 +265,13 @@ private fun TouchpadPointInfo(
 ) {
     Column {
         Text(
-            text = "$label: ${if (point.isActive) "Aktív" else "Inaktív"}",
+            text = "$label: ${if (point.isActive) stringResource(R.string.label_active) else stringResource(R.string.label_inactive)}",
             style = MaterialTheme.typography.labelLarge,
             color = if (point.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
         )
         if (point.isActive) {
             Text(
-                text = "X: ${point.x}, Y: ${point.y}",
+                text = "${stringResource(R.string.label_x)}: ${point.x}, ${stringResource(R.string.label_y)}: ${point.y}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -325,7 +325,7 @@ private fun StickCard(
 ) {
     SectionCard(title = title) {
         AxisLine(
-            label = "X",
+            label = stringResource(R.string.label_x),
             rawValue = stick.rawX,
             percentValue = stick.percentX
         )
@@ -336,7 +336,7 @@ private fun StickCard(
         )
 
         AxisLine(
-            label = "Y",
+            label = stringResource(R.string.label_y),
             rawValue = stick.rawY,
             percentValue = stick.percentY
         )
@@ -360,7 +360,7 @@ private fun AxisLine(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "raw: $rawValue",
+                text = stringResource(R.string.label_raw_value, rawValue),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.outline
             )
@@ -392,7 +392,7 @@ private fun TriggerCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "raw: ${trigger.rawValue}",
+                text = stringResource(R.string.label_raw_value, trigger.rawValue),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.outline
             )

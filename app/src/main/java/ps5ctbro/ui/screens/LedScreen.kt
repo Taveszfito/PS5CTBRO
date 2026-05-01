@@ -481,7 +481,7 @@ private fun PlayerLedsCard(
             onDismissRequest = { showInfoDialog = false },
             confirmButton = {
                 TextButton(onClick = { showInfoDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.button_ok))
                 }
             },
             title = {
