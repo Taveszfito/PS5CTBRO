@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,10 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SportsEsports
-import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,9 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -62,7 +56,6 @@ import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SmallActionButton
 import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRowModern
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
-import com.DueBoysenberry1226.ps5ctbro.ui.theme.BlueBright
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.CyanAxis
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.GreenAxis
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PanelStroke
@@ -72,8 +65,6 @@ import com.DueBoysenberry1226.ps5ctbro.ui.theme.TextMutedDark
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 private const val HISTORY_SIZE = 180
@@ -151,7 +142,6 @@ fun MotionSensorsScreen(
         latestAbsPitch = rawPitch
 
         if (baselineRoll.isNaN()) {
-            // Alap/nulla pozíció: kontroller állítva, a két markolaton állva.
             baselineRoll = rawRoll
             baselinePitch = rawPitch
             baselineYaw = integratedYaw
@@ -234,6 +224,10 @@ fun MotionSensorsScreen(
         appendHistory(yawHistory, 0f)
     }
 
+    LaunchedEffect(Unit) {
+        onResetReference()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -253,17 +247,13 @@ fun MotionSensorsScreen(
             onResetReference = onResetReference
         )
 
-        AxisSummarySection(
-            orientation = orientationState,
-            enabled = !isBtMode
-        )
-
         RealtimeGraphCard(
             orientation = orientationState,
             enabled = !isBtMode
         )
 
-        BottomDetailsRow(
+        ControllerViewCard(
+            modifier = Modifier.fillMaxWidth(),
             orientation = orientationState,
             enabled = !isBtMode
         )
@@ -520,15 +510,6 @@ private fun TopDownYawPanel(
                 .align(Alignment.TopEnd)
                 .padding(14.dp)
         )
-
-        Text(
-            text = "",
-            color = TextMutedDark,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp)
-        )
     }
 }
 
@@ -649,104 +630,6 @@ private fun MiniIconPill(
                 .background(Color.Transparent)
         ) {
             content()
-        }
-    }
-}
-
-@Composable
-private fun AxisSummarySection(
-    orientation: MotionOrientationState,
-    enabled: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        CompactAxisMetricCard(
-            modifier = Modifier.weight(1f),
-            title = stringResource(R.string.label_axis_x),
-            value = stringResource(R.string.label_axis_value_unit, orientation.gyroXRate),
-            axisColor = RedAxis,
-            history = orientation.xRateHistory,
-            enabled = enabled
-        )
-
-        CompactAxisMetricCard(
-            modifier = Modifier.weight(1f),
-            title = stringResource(R.string.label_axis_y),
-            value = stringResource(R.string.label_axis_value_unit, orientation.gyroYRate),
-            axisColor = GreenAxis,
-            history = orientation.yRateHistory,
-            enabled = enabled
-        )
-
-        CompactAxisMetricCard(
-            modifier = Modifier.weight(1f),
-            title = stringResource(R.string.label_axis_z),
-            value = stringResource(R.string.label_axis_value_unit, orientation.gyroZRate),
-            axisColor = CyanAxis,
-            history = orientation.zRateHistory,
-            enabled = enabled
-        )
-    }
-}
-
-@Composable
-private fun CompactAxisMetricCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    value: String,
-    axisColor: Color,
-    history: List<Float>,
-    enabled: Boolean
-) {
-    GlassPanel(
-        modifier = modifier.aspectRatio(1f),
-        contentPadding = 10,
-        enabled = enabled
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = axisColor,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 6.dp)
-        )
-
-        Text(
-            text = stringResource(R.string.label_rotation_rate),
-            style = MaterialTheme.typography.labelMedium,
-            color = TextMutedDark,
-            modifier = Modifier.padding(top = 2.dp)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-                .height(30.dp)
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawLine(
-                    color = axisColor.copy(alpha = 0.18f),
-                    start = Offset(0f, size.height / 2f),
-                    end = Offset(size.width, size.height / 2f),
-                    strokeWidth = 1.dp.toPx()
-                )
-                drawHistoryLine(
-                    values = history,
-                    color = axisColor,
-                    minValue = -80f,
-                    maxValue = 80f
-                )
-            }
         }
     }
 }
@@ -891,189 +774,6 @@ private fun LegendDot(
 }
 
 @Composable
-private fun BottomDetailsRow(
-    orientation: MotionOrientationState,
-    enabled: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        OrientationDetailsCard(
-            modifier = Modifier.weight(1f),
-            orientation = orientation,
-            enabled = enabled
-        )
-
-        ControllerViewCard(
-            modifier = Modifier.weight(1f),
-            orientation = orientation,
-            enabled = enabled
-        )
-    }
-}
-
-@Composable
-private fun OrientationDetailsCard(
-    modifier: Modifier = Modifier,
-    orientation: MotionOrientationState,
-    enabled: Boolean
-) {
-    GlassPanel(
-        modifier = modifier,
-        contentPadding = 14,
-        enabled = enabled
-    ) {
-        Text(
-            text = stringResource(R.string.label_orientation_euler),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold
-        )
-
-        Column(
-            modifier = Modifier.padding(top = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            EulerBar(label = stringResource(R.string.label_axis_x), value = orientation.pitch, color = RedAxis)
-            EulerBar(label = stringResource(R.string.label_axis_y), value = orientation.yaw, color = GreenAxis)
-            EulerBar(label = stringResource(R.string.label_axis_z), value = orientation.roll, color = CyanAxis)
-        }
-
-        AxisAngleSummaryRow(
-            roll = orientation.roll,
-            pitch = orientation.pitch,
-            yaw = orientation.yaw,
-            modifier = Modifier.padding(top = 12.dp)
-        )
-
-        Text(
-            text = stringResource(R.string.label_accel_magnitude, orientation.accelMagnitude.toInt()),
-            color = TextMutedDark,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 10.dp)
-        )
-    }
-}
-
-@Composable
-private fun AxisAngleSummaryRow(
-    roll: Float,
-    pitch: Float,
-    yaw: Float,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        AngleSummaryCell(
-            modifier = Modifier.weight(1f),
-            label = stringResource(R.string.label_x),
-            value = pitch,
-            color = RedAxis
-        )
-        AngleSummaryCell(
-            modifier = Modifier.weight(1f),
-            label = stringResource(R.string.label_y),
-            value = yaw,
-            color = GreenAxis
-        )
-        AngleSummaryCell(
-            modifier = Modifier.weight(1f),
-            label = stringResource(R.string.label_z),
-            value = roll,
-            color = CyanAxis
-        )
-    }
-}
-
-@Composable
-private fun AngleSummaryCell(
-    modifier: Modifier = Modifier,
-    label: String,
-    value: Float,
-    color: Color
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f))
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = stringResource(R.string.label_degrees_format, value),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 2.dp)
-        )
-    }
-}
-
-@Composable
-private fun EulerBar(
-    label: String,
-    value: Float,
-    color: Color
-) {
-    val normalized = ((value + 180f) / 360f).coerceIn(0f, 1f)
-
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-                color = color,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = stringResource(R.string.label_degrees_format_1dp, value),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .height(14.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(normalized)
-                    .height(14.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                color.copy(alpha = 0.35f),
-                                color
-                            )
-                        )
-                    )
-            )
-        }
-    }
-}
-
-@Composable
 private fun ControllerViewCard(
     modifier: Modifier = Modifier,
     orientation: MotionOrientationState,
@@ -1177,43 +877,6 @@ private fun MiniAxisPreview(
                     .background(color.copy(alpha = 0.78f))
             )
         }
-    }
-}
-
-@Composable
-private fun ToggleChip(
-    text: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-                } else {
-                    Color.Transparent
-                }
-            )
-            .border(
-                1.dp,
-                if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.50f)
-                } else {
-                    Color.Transparent
-                },
-                RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.primary else TextMutedDark,
-            fontWeight = FontWeight.SemiBold
-        )
     }
 }
 
