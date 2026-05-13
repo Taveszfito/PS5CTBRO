@@ -262,6 +262,16 @@
     <string name="label_r2">R2</string>
     <string name="label_x">X</string>
     <string name="label_y">Y</string>
+    <string name="label_z">Z</string>
+    <string name="label_2_5d">2.5D</string>
+    <string name="label_2_5d_split_view">2.5D osztott nézet</string>
+    <string name="label_pitch">Bólogatás</string>
+    <string name="label_roll">Oldalra dőlés</string>
+    <string name="label_yaw">Irány</string>
+    <string name="label_yaw_top_down">Y  Jobbra-balra nézés</string>
+    <string name="label_degrees_format">%1$+.0f°</string>
+    <string name="label_degrees_format_1dp">%1$+.1f°</string>
+    <string name="label_combination_format">%1$s  %2$s</string>
     <string name="label_firmware_type">Firmware típus</string>
     <string name="label_software_series">Software sorozat</string>
     <string name="label_hardware_info">Hardver infó</string>

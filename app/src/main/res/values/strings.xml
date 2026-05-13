@@ -281,6 +281,16 @@
     <string name="label_r2">R2</string>
     <string name="label_x">X</string>
     <string name="label_y">Y</string>
+    <string name="label_z">Z</string>
+    <string name="label_2_5d">2.5D</string>
+    <string name="label_2_5d_split_view">2.5D split view</string>
+    <string name="label_pitch">Pitch</string>
+    <string name="label_roll">Roll</string>
+    <string name="label_yaw">Yaw</string>
+    <string name="label_yaw_top_down">Y  Yaw</string>
+    <string name="label_degrees_format">%1$+.0f°</string>
+    <string name="label_degrees_format_1dp">%1$+.1f°</string>
+    <string name="label_combination_format">%1$s  %2$s</string>
     <string name="label_firmware_type">Firmware type</string>
     <string name="label_software_series">Software series</string>
     <string name="label_hardware_info">Hardware info</string>

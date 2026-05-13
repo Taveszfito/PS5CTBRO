@@ -70,6 +70,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.theme.RedAxis
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.SuccessGreen
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.TextMutedDark
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -77,7 +78,11 @@ import kotlin.math.sqrt
 
 private const val HISTORY_SIZE = 180
 private const val MAX_GRAPH_ANGLE = 180f
-private const val YAW_RATE_SCALE = 8f
+private const val YAW_RATE_SCALE = 16f
+private const val YAW_DEAD_ZONE_DPS = 1.4f
+private const val YAW_BIAS_LEARNING_SAMPLES = 90
+private const val STATIONARY_GYRO_THRESHOLD_DPS = 2.2f
+private const val STATIONARY_YAW_CORRECTION = 0.018f
 
 data class MotionOrientationState(
     val roll: Float,
@@ -115,6 +120,8 @@ fun MotionSensorsScreen(
     var baselineRoll by remember { mutableFloatStateOf(Float.NaN) }
     var baselinePitch by remember { mutableFloatStateOf(Float.NaN) }
     var baselineYaw by remember { mutableFloatStateOf(0f) }
+    var yawBiasRate by remember { mutableFloatStateOf(0f) }
+    var yawBiasSamples by remember { mutableLongStateOf(0L) }
     var lastSampleNanos by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(
@@ -143,23 +150,47 @@ fun MotionSensorsScreen(
         latestAbsRoll = rawRoll
         latestAbsPitch = rawPitch
 
-        if (lastSampleNanos != 0L) {
-            val dt = ((now - lastSampleNanos) / 1_000_000_000f).coerceIn(0f, 0.12f)
-            integratedYaw = normalizeAngle(
-                integratedYaw - ((uiState.gyro.z / YAW_RATE_SCALE) * dt)
-            )
-        }
-        lastSampleNanos = now
-
         if (baselineRoll.isNaN()) {
+            // Alap/nulla pozíció: kontroller állítva, a két markolaton állva.
             baselineRoll = rawRoll
             baselinePitch = rawPitch
             baselineYaw = integratedYaw
         }
 
-        val relativeRoll = -shortestAngleDelta(rawRoll, baselineRoll)
-        val relativePitch = shortestAngleDelta(rawPitch, baselinePitch)
-        val relativeYaw = integratedYaw - baselineYaw
+        val measuredYawRate = -(uiState.gyro.y / YAW_RATE_SCALE)
+
+        if (yawBiasSamples < YAW_BIAS_LEARNING_SAMPLES) {
+            yawBiasRate = ((yawBiasRate * yawBiasSamples) + measuredYawRate) / (yawBiasSamples + 1L)
+            yawBiasSamples += 1L
+        }
+
+        val correctedYawRate = measuredYawRate - yawBiasRate
+        val yawRateForIntegration = if (abs(correctedYawRate) < YAW_DEAD_ZONE_DPS) {
+            0f
+        } else {
+            correctedYawRate
+        }
+
+        if (lastSampleNanos != 0L) {
+            val dt = ((now - lastSampleNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+            integratedYaw = normalizeAngle(integratedYaw + (yawRateForIntegration * dt))
+
+            val controllerLooksStill =
+                abs(uiState.gyro.x / 16f) < STATIONARY_GYRO_THRESHOLD_DPS &&
+                        abs(uiState.gyro.y / 16f) < STATIONARY_GYRO_THRESHOLD_DPS &&
+                        abs(uiState.gyro.z / 16f) < STATIONARY_GYRO_THRESHOLD_DPS
+
+            if (controllerLooksStill) {
+                integratedYaw = normalizeAngle(
+                    integratedYaw - shortestAngleDelta(integratedYaw, baselineYaw) * STATIONARY_YAW_CORRECTION
+                )
+            }
+        }
+        lastSampleNanos = now
+
+        val relativePitch = -shortestAngleDelta(rawRoll, baselineRoll)
+        val relativeRoll = shortestAngleDelta(rawPitch, baselinePitch)
+        val relativeYaw = shortestAngleDelta(integratedYaw, baselineYaw)
 
         appendHistory(xRateHistory, uiState.gyro.x / 16f)
         appendHistory(yRateHistory, uiState.gyro.y / 16f)
@@ -170,9 +201,9 @@ fun MotionSensorsScreen(
     }
 
     val orientationState = MotionOrientationState(
-        roll = if (baselineRoll.isNaN()) 0f else -shortestAngleDelta(latestAbsRoll, baselineRoll),
-        pitch = if (baselinePitch.isNaN()) 0f else shortestAngleDelta(latestAbsPitch, baselinePitch),
-        yaw = integratedYaw - baselineYaw,
+        pitch = if (baselineRoll.isNaN()) 0f else -shortestAngleDelta(latestAbsRoll, baselineRoll),
+        roll = if (baselinePitch.isNaN()) 0f else shortestAngleDelta(latestAbsPitch, baselinePitch),
+        yaw = shortestAngleDelta(integratedYaw, baselineYaw),
         gyroXRate = uiState.gyro.x / 16f,
         gyroYRate = uiState.gyro.y / 16f,
         gyroZRate = uiState.gyro.z / 16f,
@@ -193,6 +224,8 @@ fun MotionSensorsScreen(
         baselineRoll = latestAbsRoll
         baselinePitch = latestAbsPitch
         baselineYaw = integratedYaw
+        yawBiasRate = 0f
+        yawBiasSamples = 0L
         rollHistory.clear()
         pitchHistory.clear()
         yawHistory.clear()
@@ -328,9 +361,7 @@ private fun OrientationVisualizerCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                MiniIconPill(
-                    onClick = onResetReference
-                ) {
+                MiniIconPill(onClick = onResetReference) {
                     Icon(
                         imageVector = Icons.Default.Undo,
                         contentDescription = stringResource(R.string.content_desc_reset_view),
@@ -338,201 +369,259 @@ private fun OrientationVisualizerCard(
                         modifier = Modifier.size(15.dp)
                     )
                 }
-                MiniInfoPill(text = "60 Hz")
+                MiniInfoPill(text = stringResource(R.string.label_2_5d))
             }
         }
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp)
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            BlueBright.copy(alpha = 0.10f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            Color.Transparent
-                        )
-                    )
-                )
-                .border(
-                    1.dp,
-                    PanelStroke.copy(alpha = 0.42f),
-                    RoundedCornerShape(20.dp)
-                )
+                .padding(top = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val cx = size.width / 2f
-                val cy = size.height / 2f - 6f
-                val radius = size.minDimension * 0.28f
-
-                drawCircle(
-                    color = BlueBright.copy(alpha = 0.08f),
-                    radius = radius * 1.40f,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 1.0.dp.toPx())
-                )
-
-                drawCircle(
-                    color = BlueBright.copy(alpha = 0.14f),
-                    radius = radius * 1.05f,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 1.0.dp.toPx())
-                )
-
-                drawOval(
-                    color = RedAxis.copy(alpha = 0.18f),
-                    topLeft = Offset(cx - radius * 1.12f, cy - radius * 0.86f),
-                    size = Size(radius * 2.24f, radius * 1.72f),
-                    style = Stroke(width = 1.0.dp.toPx())
-                )
-
-                drawLine(
-                    color = RedAxis.copy(alpha = 0.95f),
-                    start = Offset(cx, cy + radius * 1.18f),
-                    end = Offset(cx, cy - radius * 1.38f),
-                    strokeWidth = 2.0.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                drawLine(
-                    color = GreenAxis.copy(alpha = 0.95f),
-                    start = Offset(cx - radius * 1.34f, cy),
-                    end = Offset(cx + radius * 1.34f, cy),
-                    strokeWidth = 2.0.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                drawOval(
-                    color = CyanAxis.copy(alpha = 0.92f),
-                    topLeft = Offset(cx - radius * 1.15f, cy - radius * 0.20f),
-                    size = Size(radius * 2.30f, radius * 0.40f),
-                    style = Stroke(width = 2.0.dp.toPx())
-                )
-
-                val controllerWidth = radius * 1.45f
-                val controllerHeight = radius * 0.72f
-
-                val controllerCenterX = cx + (orientation.pitch / 180f) * radius * 0.22f
-                val controllerCenterY = cy + (orientation.roll / 180f) * radius * 0.18f
-
-                val left = controllerCenterX - controllerWidth / 2f
-                val top = controllerCenterY - controllerHeight / 2f + 2f
-
-                withTransform({
-                    rotate(degrees = orientation.yaw * 0.28f, pivot = Offset(controllerCenterX, controllerCenterY))
-                }) {
-                    drawRoundRect(
-                        color = Color.White.copy(alpha = 0.07f),
-                        topLeft = Offset(left, top),
-                        size = Size(controllerWidth, controllerHeight),
-                        cornerRadius = CornerRadius(34f, 34f)
-                    )
-
-                    drawRoundRect(
-                        color = BlueBright.copy(alpha = 0.16f),
-                        topLeft = Offset(
-                            left + controllerWidth * 0.27f,
-                            top + controllerHeight * 0.08f
-                        ),
-                        size = Size(controllerWidth * 0.46f, controllerHeight * 0.22f),
-                        cornerRadius = CornerRadius(18f, 18f)
-                    )
-
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.42f),
-                        radius = controllerHeight * 0.11f,
-                        center = Offset(
-                            left + controllerWidth * 0.36f,
-                            top + controllerHeight * 0.70f
-                        )
-                    )
-
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.42f),
-                        radius = controllerHeight * 0.11f,
-                        center = Offset(
-                            left + controllerWidth * 0.64f,
-                            top + controllerHeight * 0.70f
-                        )
-                    )
-                }
-
-                val pointerLength = radius * 1.00f
-                val angleRad = Math.toRadians(orientation.yaw.toDouble()).toFloat()
-                val endX = cx + cos(angleRad) * pointerLength
-                val endY = cy + sin(angleRad) * pointerLength
-
-                drawLine(
-                    color = CyanAxis,
-                    start = Offset(cx, cy),
-                    end = Offset(endX, endY),
-                    strokeWidth = 3.2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                val arrowPath = Path().apply {
-                    moveTo(endX, endY)
-                    lineTo(endX - 18f, endY - 8f)
-                    lineTo(endX - 12f, endY + 12f)
-                    close()
-                }
-                drawPath(path = arrowPath, color = CyanAxis)
-            }
-
-            Text(
-                text = "X",
-                color = RedAxis,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+            TopDownYawPanel(
+                yaw = orientation.yaw,
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 10.dp)
+                    .fillMaxWidth()
+                    .height(230.dp)
             )
 
-            Text(
-                text = "Y",
-                color = GreenAxis,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 12.dp)
-            )
-
-            Text(
-                text = "Z",
-                color = CyanAxis,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 12.dp)
-            )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.label_roll_value, orientation.roll.toInt()),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
+                TiltMeterPanel(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(132.dp),
+                    label = stringResource(R.string.label_x),
+                    title = stringResource(R.string.label_pitch),
+                    value = orientation.pitch,
+                    color = RedAxis,
+                    verticalMode = true
                 )
 
-                Text(
-                    text = stringResource(R.string.label_pitch_yaw_value, orientation.pitch.toInt(), orientation.yaw.toInt()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextMutedDark,
-                    modifier = Modifier.padding(top = 3.dp)
+                TiltMeterPanel(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(132.dp),
+                    label = stringResource(R.string.label_z),
+                    title = stringResource(R.string.label_roll),
+                    value = orientation.roll,
+                    color = CyanAxis,
+                    verticalMode = false
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun TopDownYawPanel(
+    yaw: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.16f))
+            .border(
+                1.dp,
+                PanelStroke.copy(alpha = 0.38f),
+                RoundedCornerShape(20.dp)
+            )
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f + 4f
+            val radius = size.minDimension * 0.34f
+
+            drawCircle(
+                color = GreenAxis.copy(alpha = 0.08f),
+                radius = radius * 1.18f,
+                center = Offset(cx, cy),
+                style = Stroke(width = 1.dp.toPx())
+            )
+            drawCircle(
+                color = GreenAxis.copy(alpha = 0.14f),
+                radius = radius * 0.82f,
+                center = Offset(cx, cy),
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            drawLine(
+                color = PanelStroke.copy(alpha = 0.38f),
+                start = Offset(cx - radius * 1.28f, cy),
+                end = Offset(cx + radius * 1.28f, cy),
+                strokeWidth = 1.dp.toPx()
+            )
+            drawLine(
+                color = PanelStroke.copy(alpha = 0.38f),
+                start = Offset(cx, cy - radius * 1.28f),
+                end = Offset(cx, cy + radius * 1.28f),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            val controllerWidth = radius * 1.92f
+            val controllerHeight = radius * 0.92f
+            val left = cx - controllerWidth / 2f
+            val top = cy - controllerHeight / 2f
+
+            withTransform({ rotate(degrees = yaw, pivot = Offset(cx, cy)) }) {
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.075f),
+                    topLeft = Offset(left, top),
+                    size = Size(controllerWidth, controllerHeight),
+                    cornerRadius = CornerRadius(40f, 40f)
+                )
+                drawRoundRect(
+                    color = GreenAxis.copy(alpha = 0.18f),
+                    topLeft = Offset(left + controllerWidth * 0.34f, top + controllerHeight * 0.08f),
+                    size = Size(controllerWidth * 0.32f, controllerHeight * 0.18f),
+                    cornerRadius = CornerRadius(16f, 16f)
+                )
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.38f),
+                    radius = controllerHeight * 0.12f,
+                    center = Offset(left + controllerWidth * 0.34f, top + controllerHeight * 0.66f)
+                )
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.38f),
+                    radius = controllerHeight * 0.12f,
+                    center = Offset(left + controllerWidth * 0.66f, top + controllerHeight * 0.66f)
+                )
+
+                drawLine(
+                    color = GreenAxis,
+                    start = Offset(cx, cy),
+                    end = Offset(cx, top - radius * 0.24f),
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        Text(
+            text = stringResource(R.string.label_yaw_top_down),
+            color = GreenAxis,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(14.dp)
+        )
+
+        Text(
+            text = stringResource(R.string.label_degrees_format, yaw),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(14.dp)
+        )
+
+        Text(
+            text = "",
+            color = TextMutedDark,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun TiltMeterPanel(
+    modifier: Modifier = Modifier,
+    label: String,
+    title: String,
+    value: Float,
+    color: Color,
+    verticalMode: Boolean
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.16f))
+            .border(
+                1.dp,
+                PanelStroke.copy(alpha = 0.34f),
+                RoundedCornerShape(18.dp)
+            )
+            .padding(10.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val usableWidth = size.width
+            val usableHeight = size.height
+            val center = Offset(usableWidth / 2f, usableHeight / 2f + 8f)
+            val clamped = value.coerceIn(-90f, 90f)
+            val normalized = clamped / 90f
+
+            drawRoundRect(
+                color = color.copy(alpha = 0.08f),
+                topLeft = Offset(0f, 26f),
+                size = Size(usableWidth, usableHeight - 32f),
+                cornerRadius = CornerRadius(18f, 18f)
+            )
+
+            if (verticalMode) {
+                drawLine(
+                    color = PanelStroke.copy(alpha = 0.42f),
+                    start = Offset(center.x, 34f),
+                    end = Offset(center.x, usableHeight - 8f),
+                    strokeWidth = 1.dp.toPx()
+                )
+                drawLine(
+                    color = color,
+                    start = center,
+                    end = Offset(center.x, center.y - normalized * usableHeight * 0.34f),
+                    strokeWidth = 5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            } else {
+                drawLine(
+                    color = PanelStroke.copy(alpha = 0.42f),
+                    start = Offset(12f, center.y),
+                    end = Offset(usableWidth - 12f, center.y),
+                    strokeWidth = 1.dp.toPx()
+                )
+                drawLine(
+                    color = color,
+                    start = center,
+                    end = Offset(center.x + normalized * usableWidth * 0.38f, center.y),
+                    strokeWidth = 5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            drawCircle(
+                color = color,
+                radius = 5.dp.toPx(),
+                center = if (verticalMode) {
+                    Offset(center.x, center.y - normalized * usableHeight * 0.34f)
+                } else {
+                    Offset(center.x + normalized * usableWidth * 0.38f, center.y)
+                }
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.label_combination_format, label, title),
+            color = color,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+
+        Text(
+            text = stringResource(R.string.label_degrees_format, value),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
     }
 }
 
@@ -576,7 +665,7 @@ private fun AxisSummarySection(
         CompactAxisMetricCard(
             modifier = Modifier.weight(1f),
             title = stringResource(R.string.label_axis_x),
-            value = formatAxisValue(orientation.gyroXRate),
+            value = stringResource(R.string.label_axis_value_unit, orientation.gyroXRate),
             axisColor = RedAxis,
             history = orientation.xRateHistory,
             enabled = enabled
@@ -585,7 +674,7 @@ private fun AxisSummarySection(
         CompactAxisMetricCard(
             modifier = Modifier.weight(1f),
             title = stringResource(R.string.label_axis_y),
-            value = formatAxisValue(orientation.gyroYRate),
+            value = stringResource(R.string.label_axis_value_unit, orientation.gyroYRate),
             axisColor = GreenAxis,
             history = orientation.yRateHistory,
             enabled = enabled
@@ -594,7 +683,7 @@ private fun AxisSummarySection(
         CompactAxisMetricCard(
             modifier = Modifier.weight(1f),
             title = stringResource(R.string.label_axis_z),
-            value = formatAxisValue(orientation.gyroZRate),
+            value = stringResource(R.string.label_axis_value_unit, orientation.gyroZRate),
             axisColor = CyanAxis,
             history = orientation.zRateHistory,
             enabled = enabled
@@ -733,7 +822,7 @@ private fun RealtimeGraphCard(
                 }
 
                 drawHistoryLine(
-                    values = orientation.rollHistory,
+                    values = orientation.pitchHistory,
                     color = RedAxis,
                     minValue = -MAX_GRAPH_ANGLE,
                     maxValue = MAX_GRAPH_ANGLE,
@@ -743,7 +832,7 @@ private fun RealtimeGraphCard(
                     contentBottom = bottom
                 )
                 drawHistoryLine(
-                    values = orientation.pitchHistory,
+                    values = orientation.yawHistory,
                     color = GreenAxis,
                     minValue = -MAX_GRAPH_ANGLE,
                     maxValue = MAX_GRAPH_ANGLE,
@@ -753,7 +842,7 @@ private fun RealtimeGraphCard(
                     contentBottom = bottom
                 )
                 drawHistoryLine(
-                    values = orientation.yawHistory,
+                    values = orientation.rollHistory,
                     color = CyanAxis,
                     minValue = -MAX_GRAPH_ANGLE,
                     maxValue = MAX_GRAPH_ANGLE,
@@ -847,9 +936,9 @@ private fun OrientationDetailsCard(
             modifier = Modifier.padding(top = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            EulerBar(label = stringResource(R.string.label_roll_x), value = orientation.roll, color = RedAxis)
-            EulerBar(label = stringResource(R.string.label_pitch_y), value = orientation.pitch, color = GreenAxis)
-            EulerBar(label = stringResource(R.string.label_yaw_z), value = orientation.yaw, color = CyanAxis)
+            EulerBar(label = stringResource(R.string.label_axis_x), value = orientation.pitch, color = RedAxis)
+            EulerBar(label = stringResource(R.string.label_axis_y), value = orientation.yaw, color = GreenAxis)
+            EulerBar(label = stringResource(R.string.label_axis_z), value = orientation.roll, color = CyanAxis)
         }
 
         AxisAngleSummaryRow(
@@ -881,20 +970,20 @@ private fun AxisAngleSummaryRow(
     ) {
         AngleSummaryCell(
             modifier = Modifier.weight(1f),
-            label = "Roll",
-            value = roll,
+            label = stringResource(R.string.label_x),
+            value = pitch,
             color = RedAxis
         )
         AngleSummaryCell(
             modifier = Modifier.weight(1f),
-            label = "Pitch",
-            value = pitch,
+            label = stringResource(R.string.label_y),
+            value = yaw,
             color = GreenAxis
         )
         AngleSummaryCell(
             modifier = Modifier.weight(1f),
-            label = "Yaw",
-            value = yaw,
+            label = stringResource(R.string.label_z),
+            value = roll,
             color = CyanAxis
         )
     }
@@ -921,7 +1010,7 @@ private fun AngleSummaryCell(
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = String.format("%+.0f°", value),
+            text = stringResource(R.string.label_degrees_format, value),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
@@ -951,7 +1040,7 @@ private fun EulerBar(
             )
 
             Text(
-                text = String.format("%+.1f°", value),
+                text = stringResource(R.string.label_degrees_format_1dp, value),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
@@ -1002,151 +1091,90 @@ private fun ControllerViewCard(
             fontWeight = FontWeight.Bold
         )
 
-        Row(
+        Text(
+            text = stringResource(R.string.label_2_5d_split_view),
+            style = MaterialTheme.typography.bodySmall,
+            color = TextMutedDark,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 10.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ToggleChip(
-                text = stringResource(R.string.label_3d_view),
-                selected = true,
-                modifier = Modifier.weight(1f)
+            MiniAxisPreview(
+                label = stringResource(R.string.label_y),
+                title = stringResource(R.string.label_yaw),
+                value = orientation.yaw,
+                color = GreenAxis
             )
-            ToggleChip(
-                text = stringResource(R.string.label_top_view),
-                selected = false,
-                modifier = Modifier.weight(1f)
+            MiniAxisPreview(
+                label = stringResource(R.string.label_x),
+                title = stringResource(R.string.label_pitch),
+                value = orientation.pitch,
+                color = RedAxis
+            )
+            MiniAxisPreview(
+                label = stringResource(R.string.label_z),
+                title = stringResource(R.string.label_roll),
+                value = orientation.roll,
+                color = CyanAxis
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiniAxisPreview(
+    label: String,
+    title: String,
+    value: Float,
+    color: Color
+) {
+    val normalized = ((value.coerceIn(-90f, 90f) + 90f) / 180f).coerceIn(0f, 1f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.16f))
+            .padding(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.label_combination_format, label, title),
+                style = MaterialTheme.typography.labelLarge,
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = stringResource(R.string.label_degrees_format, value),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp)
-                .height(190.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f))
-                .border(
-                    1.dp,
-                    PanelStroke.copy(alpha = 0.34f),
-                    RoundedCornerShape(18.dp)
-                )
+                .padding(top = 8.dp)
+                .height(10.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
         ) {
-            Canvas(
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp)
-            ) {
-                val cx = size.width / 2f
-                val cy = size.height / 2f + 14f
-                val radius = size.minDimension * 0.24f
-
-                drawLine(
-                    color = RedAxis.copy(alpha = 0.95f),
-                    start = Offset(cx, cy + radius * 1.8f),
-                    end = Offset(cx, cy - radius * 1.8f),
-                    strokeWidth = 2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                drawLine(
-                    color = GreenAxis.copy(alpha = 0.95f),
-                    start = Offset(cx - radius * 1.95f, cy),
-                    end = Offset(cx + radius * 1.95f, cy),
-                    strokeWidth = 2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                val controllerWidth = radius * 2.7f
-                val controllerHeight = radius * 1.45f
-
-                val controllerCenterX = cx + (orientation.pitch / 180f) * radius * 0.18f
-                val controllerCenterY = cy + (orientation.roll / 180f) * radius * 0.26f
-
-                val left = controllerCenterX - controllerWidth / 2f
-                val top = controllerCenterY - controllerHeight / 2f
-
-                withTransform({
-                    rotate(
-                        degrees = orientation.yaw * 0.42f,
-                        pivot = Offset(controllerCenterX, controllerCenterY)
-                    )
-                }) {
-                    drawRoundRect(
-                        color = Color.White.copy(alpha = 0.06f),
-                        topLeft = Offset(left, top),
-                        size = Size(controllerWidth, controllerHeight),
-                        cornerRadius = CornerRadius(46f, 46f)
-                    )
-
-                    drawRoundRect(
-                        color = BlueBright.copy(alpha = 0.14f),
-                        topLeft = Offset(
-                            left + controllerWidth * 0.29f,
-                            top + controllerHeight * 0.06f
-                        ),
-                        size = Size(controllerWidth * 0.42f, controllerHeight * 0.23f),
-                        cornerRadius = CornerRadius(16f, 16f)
-                    )
-
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.34f),
-                        radius = controllerHeight * 0.12f,
-                        center = Offset(
-                            left + controllerWidth * 0.36f,
-                            top + controllerHeight * 0.68f
-                        )
-                    )
-
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.34f),
-                        radius = controllerHeight * 0.12f,
-                        center = Offset(
-                            left + controllerWidth * 0.64f,
-                            top + controllerHeight * 0.68f
-                        )
-                    )
-                }
-
-                drawCircle(
-                    color = BlueBright,
-                    radius = 5.dp.toPx(),
-                    center = Offset(controllerCenterX, controllerCenterY)
-                )
-            }
-
-            Text(
-                text = "Y",
-                color = GreenAxis,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 10.dp)
-            )
-
-            Text(
-                text = "X",
-                color = RedAxis,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-            )
-
-            Text(
-                text = "Z",
-                color = CyanAxis,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 10.dp)
+                    .fillMaxWidth(normalized)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(color.copy(alpha = 0.78f))
             )
         }
     }
@@ -1301,25 +1329,32 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHistoryLine(
     val stepX = width / (values.lastIndex.coerceAtLeast(1))
 
     var previous: Offset? = null
+    var previousValue: Float? = null
+
     values.forEachIndexed { index, value ->
         val normalizedY = 1f - ((value - minValue) / range).coerceIn(0f, 1f)
         val point = Offset(
             x = contentLeft + (stepX * index),
             y = contentTop + (height * normalizedY)
         )
-        previous?.let {
-            drawLine(
-                color = color,
-                start = it,
-                end = point,
-                strokeWidth = 2.2.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
-        previous = point
-    }
-}
 
-private fun formatAxisValue(value: Float): String {
-    return String.format("%+.2f °/s", value)
+        val shouldBreakLine = previousValue?.let { old ->
+            abs(value - old) > 180f
+        } ?: false
+
+        if (!shouldBreakLine) {
+            previous?.let {
+                drawLine(
+                    color = color,
+                    start = it,
+                    end = point,
+                    strokeWidth = 2.2.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        previous = point
+        previousValue = value
+    }
 }
