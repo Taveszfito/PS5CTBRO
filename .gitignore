@@ -13,3 +13,16 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Android / Gradle build outputs
+/build/
+**/build/
+
+# APK / bundle outputs
+*.apk
+*.aab
+*.ap_
+*.idsig
+
+# Android Studio
+.idea/
+*.iml
