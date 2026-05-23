@@ -2,118 +2,79 @@
 
 An experimental Android app for testing and interacting with the PlayStation DualSense controller.
 
-This project started as a simple experiment to see how much of the DualSense can actually be used on Android — even without official support.
-
-Over time, it evolved into a full testing tool covering most controller features including audio, triggers, haptics, motion sensors, and more.
+Originally started as a simple experiment to explore how much of the DualSense could be used on Android — even without official support — and evolved into a broader controller testing and experimentation tool.
 
 ---
 
 ## ✨ Features
 
 ### 🎮 Input & Interaction
-- Full input test (buttons, sticks, triggers)
-- Touchpad input with visual feedback
-- Bluetooth support for basic testing (input + vibration)
+- Full input test (USB / Bluetooth)
+- Touchpad input with visual feedback (USB / Bluetooth)
 
 ### 🎯 Adaptive Triggers
-- Precise resistance and vibration control
-- Improved accuracy and consistency (v2.0)
+- Precise resistance and vibration control (USB)
 
-### 🔊 Audio (Controller Speaker)
-- Live system audio routed to the controller
-- Custom audio pipeline (not natively supported on Android)
-- Controller-only playback (phone speaker muted)
-
-### 🎚 Volume Control
-- Dedicated in-app volume slider
-- Integrated into Android volume panel
-- Independent from system media volume
+### 🔊 Audio
+- Live system audio routed to the controller (USB)
+- Custom audio pipeline and routing (USB)
+- Controller speaker playback (USB)
+- Audio routing to the controller headphone jack (USB)
+- Dedicated controller volume control (USB)
+- Integrated Android volume panel support (USB)
 
 ### 📳 Haptics / Vibration
-- Standalone vibration testing
-- Audio-reactive vibration support
+- Standalone vibration testing (USB / Bluetooth)
+- Audio-reactive vibration (USB)
 
 ### 🌈 LED Control
-- Light bar + player LEDs control
-- Audio-reactive “Disco Mode”
+- Light bar and player LED control (USB)
+- Audio-reactive “Disco Mode” (USB)
 
 ### 🌀 Motion Sensors
-- Real-time gyroscope test
-- Live motion visualization
+- Real-time gyroscope testing (USB)
+- Live motion visualization (USB)
 
 ### ℹ️ Controller Info
-- Dedicated controller information screen
-- Displays available controller-related data
+- Dedicated controller information screen (USB)
+- Displays available controller data (USB)
 
 ---
 
-## ⚙️ Audio System
+## 🔌 Connection Support
 
-The app uses a custom audio routing approach:
-
-- System audio is captured internally
-- Media volume is muted to avoid playback on the phone speaker
-- Audio is streamed directly to the controller speaker
-- A dedicated in-app volume slider controls playback
-
-This enables controller-only audio playback, even though Android does not support the DualSense as a native audio output device.
-
----
-
-## 🔌 Connection Modes
-
-### USB (Recommended)
-- Full feature support
-- Required for:
-  - Audio streaming
-  - Adaptive triggers
-  - LED control
-  - Gyroscope test
+### USB
+Recommended for full functionality.
 
 ### Bluetooth
-- Limited support
-- Available features:
-  - Input test
-  - Vibration test
+Limited by Android's public controller APIs.  
+Basic input, touchpad and vibration testing remain available.
 
 ---
 
-## ⚠️ Notes
+## ⚠️ Experimental Status
 
-Most features are not officially supported on Android.
-
-The app relies on custom communication and workaround solutions.
+Most features are not officially supported on Android and rely on custom communication and workaround methods.
 
 Because of this:
+
 - behavior may vary between devices
-- latency or glitches can occur
-- some features may not work on all Android versions
+- latency or glitches may occur
+- some features may not work on every Android version
 - controller firmware differences can affect behavior
 
----
-
-## 🧪 Status
-
-Experimental.
-
-This project pushes hardware beyond typical Android support limits, so instability and inconsistencies are expected.
+Instability and inconsistencies should be expected.
 
 ---
 
 ## 💬 Feedback
 
-Any feedback is welcome.
+Feedback and bug reports are always welcome.
 
-If something doesn’t work as expected or behaves strangely, feel free to open an issue or share your experience.
+If something behaves unexpectedly or does not work properly, feel free to open an issue or share your experience.
 
 ---
 
 ## 📌 Why this exists
 
-There are very few tools that explore the full capabilities of the DualSense on Android.
-
-This app exists to:
-- experiment with low-level controller features
-- understand hardware behavior
-- push beyond official limitations
-- provide a usable testing environment for developers and enthusiasts
+This project explores DualSense capabilities on Android beyond official support limitations and provides a practical testing environment for developers and enthusiasts.
