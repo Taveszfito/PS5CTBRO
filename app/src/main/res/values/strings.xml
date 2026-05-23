@@ -140,7 +140,7 @@
     <string name="label_axis_value_unit">%1$+.2f °/s</string>
 
     <string name="content_desc_status_info">Status info</string>
-    <string name="label_channel_abbr">Channel</string>
+    <string name="label_channel_abbr">Headset</string>
     <string name="label_speaker_abbr">Speaker</string>
     <string name="label_left_vib_abbr">Left Vib</string>
     <string name="label_right_vib_abbr">Right Vib</string>

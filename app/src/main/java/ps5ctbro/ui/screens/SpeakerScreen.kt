@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.material.icons.outlined.Headset
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Remove
@@ -368,33 +368,29 @@ private fun ChannelRoutesCard(
         ) {
             ChannelTile(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.GraphicEq,
-                line1 = stringResource(R.string.label_channel_abbr),
-                line2 = "1",
+                icon = Icons.Outlined.Headset,
+                text = stringResource(R.string.label_channel_abbr),
                 checked = routeCh1,
                 onCheckedChange = onRouteCh1Changed
             )
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.VolumeUp,
-                line1 = stringResource(R.string.label_speaker_abbr),
-                line2 = "",
+                text = stringResource(R.string.label_speaker_abbr),
                 checked = routeCh2,
                 onCheckedChange = onRouteCh2Changed
             )
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Waves,
-                line1 = stringResource(R.string.label_left_vib_abbr),
-                line2 = "",
+                text = stringResource(R.string.label_left_vib_abbr),
                 checked = routeCh3,
                 onCheckedChange = onRouteCh3Changed
             )
             ChannelTile(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Waves,
-                line1 = stringResource(R.string.label_right_vib_abbr),
-                line2 = "",
+                text = stringResource(R.string.label_right_vib_abbr),
                 checked = routeCh4,
                 onCheckedChange = onRouteCh4Changed
             )
@@ -406,8 +402,7 @@ private fun ChannelRoutesCard(
 private fun ChannelTile(
     modifier: Modifier = Modifier,
     icon: ImageVector,
-    line1: String,
-    line2: String,
+    text: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -433,31 +428,18 @@ private fun ChannelTile(
                 modifier = Modifier.size(23.dp)
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Column(
-                modifier = Modifier.height(36.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = line1,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                    text = if (line2.isNotEmpty()) line2 else " ",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                minLines = 2,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.height(40.dp)
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 

@@ -364,6 +364,11 @@ class AudioControllerImpl private constructor(
     }
 
     override fun setChannelEnabled(channel: Int, enabled: Boolean) {
+        if (channel == 1 && enabled) {
+            resetJackSwitchPath()
+            SystemClock.sleep(120)
+        }
+
         _uiState.update { current ->
             when (channel) {
                 1 -> current.copy(
@@ -376,20 +381,28 @@ class AudioControllerImpl private constructor(
                     routeCh2 = enabled
                 )
 
-                3 -> current.copy(
-                    routeCh3 = enabled
-                )
+                3 -> current.copy(routeCh3 = enabled)
 
-                4 -> current.copy(
-                    routeCh4 = enabled
-                )
+                4 -> current.copy(routeCh4 = enabled)
 
                 else -> current
             }
         }
 
         scope.launch(Dispatchers.IO) {
-            runAudioRoutingHid()
+            if (channel == 1 && enabled) {
+                runJackRoutingHid()
+            } else if (channel == 2 && enabled) {
+                repeat(6) {
+                    runSpeakerHid()
+                    SystemClock.sleep(40)
+                }
+
+                LedControllerImpl.getInstance(appContext).sendWakeKick()
+                runAudioRoutingHid()
+            } else {
+                runAudioRoutingHid()
+            }
         }
     }
 
@@ -574,7 +587,31 @@ class AudioControllerImpl private constructor(
             startNewStreamingPipeline(record)
 
             if (!_uiState.value.routeCh1) {
-                LedControllerImpl.getInstance(appContext).sendWakeKick()
+                scope.launch(Dispatchers.IO) {
+                    SystemClock.sleep(700)
+
+                    if (!_uiState.value.isStreaming) return@launch
+                    if (_uiState.value.routeCh1) return@launch
+
+                    repeat(6) {
+                        runSpeakerHid()
+                        SystemClock.sleep(40)
+                    }
+
+                    LedControllerImpl.getInstance(appContext).sendWakeKick()
+
+                    SystemClock.sleep(500)
+
+                    if (!_uiState.value.isStreaming) return@launch
+                    if (_uiState.value.routeCh1) return@launch
+
+                    repeat(6) {
+                        runSpeakerHid()
+                        SystemClock.sleep(40)
+                    }
+
+                    LedControllerImpl.getInstance(appContext).sendWakeKick()
+                }
             }
 
             if (_uiState.value.mutePhoneWhileStreaming) {
@@ -923,6 +960,8 @@ class AudioControllerImpl private constructor(
     }
 
     private fun runJackRoutingHid(): String {
+
+
         val device = findDualSenseDevice()
             ?: return appContext.getString(R.string.log_no_usb_dualsense)
 
@@ -1371,6 +1410,35 @@ class AudioControllerImpl private constructor(
             } catch (_: Throwable) {
             }
         }
+    }
+
+    private fun resetRoutingHidConnection() {
+        try {
+            routingHidInterface?.let { hidInterface ->
+                routingUsbConnection?.releaseInterface(hidInterface)
+            }
+        } catch (_: Throwable) {
+        }
+
+        try {
+            routingUsbConnection?.close()
+        } catch (_: Throwable) {
+        }
+
+        routingUsbConnection = null
+        routingHidOutEndpoint = null
+        routingHidInterface = null
+    }
+
+    private fun resetJackSwitchPath() {
+        resetRoutingHidConnection()
+
+        try {
+            dualSense?.close()
+        } catch (_: Throwable) {
+        }
+
+        dualSense = null
     }
 
     private fun initMediaSession() {
