@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -491,13 +492,17 @@ private fun CompactRangeBar(
     val clampedStart = startPercent.coerceIn(0, 100)
     val clampedEnd = endPercent.coerceIn(clampedStart, 100)
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(18.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(Color(0xFF0C1D3A))
     ) {
+        val barWidth = maxWidth
+        val zoneStartX = barWidth * (clampedStart / 100f)
+        val zoneWidth = barWidth * ((clampedEnd - clampedStart).coerceAtLeast(1) / 100f)
+
         Box(
             modifier = Modifier
                 .fillMaxWidth(clampedPressed / 100f)
@@ -507,9 +512,9 @@ private fun CompactRangeBar(
 
         Box(
             modifier = Modifier
-                .fillMaxWidth((clampedEnd - clampedStart).coerceAtLeast(1) / 100f)
+                .width(zoneWidth)
                 .height(18.dp)
-                .offset(x = (clampedStart * 3).dp)
+                .offset(x = zoneStartX)
                 .background(MaterialTheme.colorScheme.error.copy(alpha = 0.24f))
         )
     }
