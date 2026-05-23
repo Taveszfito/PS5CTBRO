@@ -12,6 +12,8 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
+import android.hardware.usb.UsbEndpoint
+import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
@@ -91,6 +93,11 @@ class AudioControllerImpl private constructor(
         val buildTime: String,
         val deviceInfo: String,
         val controllerColor: String
+    )
+
+    private data class HidOutTarget(
+        val usbInterface: UsbInterface,
+        val endpoint: UsbEndpoint
     )
 
     private fun ByteArray.readLe16(offset: Int): Int {
@@ -203,7 +210,6 @@ class AudioControllerImpl private constructor(
         )
     }
 
-
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -235,6 +241,10 @@ class AudioControllerImpl private constructor(
     private var dominanceJob: Job? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var inputJob: Job? = null
+
+    private var routingUsbConnection: UsbDeviceConnection? = null
+    private var routingHidOutEndpoint: UsbEndpoint? = null
+    private var routingHidInterface: UsbInterface? = null
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -275,7 +285,7 @@ class AudioControllerImpl private constructor(
     }
 
     override suspend fun applySpeakerRoute() {
-        val text = withContext(Dispatchers.IO) { runSpeakerHid() }
+        val text = withContext(Dispatchers.IO) { runAudioRoutingHid() }
         setLog(text)
     }
 
@@ -309,7 +319,7 @@ class AudioControllerImpl private constructor(
     override fun setVolumeStep(step: Int) {
         val clamped = step.coerceIn(0, 10)
         val newGain = clamped / 10f
-        
+
         _uiState.update { current ->
             current.copy(
                 volumeStep = clamped,
@@ -319,7 +329,7 @@ class AudioControllerImpl private constructor(
         }
 
         volumeProvider?.currentVolume = clamped
-        
+
         mediaSession?.let { session ->
             if (session.isActive) {
                 val state = PlaybackState.Builder()
@@ -330,14 +340,14 @@ class AudioControllerImpl private constructor(
         }
 
         scope.launch(Dispatchers.IO) {
-            runSpeakerHid()
+            runAudioRoutingHid()
         }
     }
 
     override fun setAudioGain(gain: Float) {
         val clamped = gain.coerceIn(0f, 1.0f)
         val step = (clamped * 10).toInt()
-        
+
         _uiState.update { current ->
             current.copy(
                 audioGain = clamped,
@@ -345,23 +355,41 @@ class AudioControllerImpl private constructor(
                 logText = appContext.getString(R.string.label_volume_level, step)
             )
         }
-        
+
         volumeProvider?.currentVolume = step
-        
+
         scope.launch(Dispatchers.IO) {
-            runSpeakerHid()
+            runAudioRoutingHid()
         }
     }
 
     override fun setChannelEnabled(channel: Int, enabled: Boolean) {
         _uiState.update { current ->
             when (channel) {
-                1 -> current.copy(routeCh1 = enabled)
-                2 -> current.copy(routeCh2 = enabled)
-                3 -> current.copy(routeCh3 = enabled)
-                4 -> current.copy(routeCh4 = enabled)
+                1 -> current.copy(
+                    routeCh1 = enabled,
+                    routeCh2 = if (enabled) false else current.routeCh2
+                )
+
+                2 -> current.copy(
+                    routeCh1 = if (enabled) false else current.routeCh1,
+                    routeCh2 = enabled
+                )
+
+                3 -> current.copy(
+                    routeCh3 = enabled
+                )
+
+                4 -> current.copy(
+                    routeCh4 = enabled
+                )
+
                 else -> current
             }
+        }
+
+        scope.launch(Dispatchers.IO) {
+            runAudioRoutingHid()
         }
     }
 
@@ -400,14 +428,16 @@ class AudioControllerImpl private constructor(
 
     override fun onScreenVisible() {
         scope.launch(Dispatchers.IO) {
-            // 1. Speaker wake-up (6x repeat to match streaming initialization)
-            repeat(6) {
-                runSpeakerHid()
-                SystemClock.sleep(40)
+            if (_uiState.value.routeCh1) {
+                runJackRoutingHid()
+            } else {
+                repeat(6) {
+                    runSpeakerHid()
+                    SystemClock.sleep(40)
+                }
+
+                LedControllerImpl.getInstance(appContext).sendWakeKick()
             }
-            
-            // 2. LED kick (which enables vibration channel and haptics)
-            LedControllerImpl.getInstance(appContext).sendWakeKick()
         }
     }
 
@@ -434,10 +464,16 @@ class AudioControllerImpl private constructor(
             return appContext.getString(R.string.log_usb_permission_start)
         }
 
+        val jackMode = _uiState.value.routeCh1
+
         val hidLogs = buildString {
-            repeat(6) { index ->
-                appendLine("HID ${index + 1}: ${runSpeakerHid()}")
-                SystemClock.sleep(40)
+            if (jackMode) {
+                appendLine("JACK HID: ${runJackRoutingHid()}")
+            } else {
+                repeat(6) { index ->
+                    appendLine("HID ${index + 1}: ${runSpeakerHid()}")
+                    SystemClock.sleep(40)
+                }
             }
         }
 
@@ -450,7 +486,7 @@ class AudioControllerImpl private constructor(
 
         val route = openAudioRoute(device) ?: return buildString {
             appendLine(appContext.getString(R.string.log_audio_route_open_failed))
-            appendLine("=== SPK HID ===")
+            appendLine(if (jackMode) "=== JACK HID ===" else "=== SPK HID ===")
             append(hidLogs)
         }
 
@@ -536,7 +572,10 @@ class AudioControllerImpl private constructor(
 
             startSpeakerKeepAlive()
             startNewStreamingPipeline(record)
-            LedControllerImpl.getInstance(appContext).sendWakeKick()
+
+            if (!_uiState.value.routeCh1) {
+                LedControllerImpl.getInstance(appContext).sendWakeKick()
+            }
 
             if (_uiState.value.mutePhoneWhileStreaming) {
                 schedulePhoneMuteForStreaming()
@@ -656,6 +695,8 @@ class AudioControllerImpl private constructor(
         val gain = _uiState.value.audioGain
         val state = _uiState.value
 
+        val jackMode = state.routeCh1
+
         val ch1Enabled = state.routeCh1
         val ch2Enabled = state.routeCh2
         val ch3Enabled = state.routeCh3
@@ -670,17 +711,31 @@ class AudioControllerImpl private constructor(
                 .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 .toShort()
 
-            writeShortLe(output, outputIndex, if (ch1Enabled) ampMono else 0)
-            outputIndex += 2
+            if (jackMode) {
+                writeShortLe(output, outputIndex, ampMono)
+                outputIndex += 2
 
-            writeShortLe(output, outputIndex, if (ch2Enabled) ampMono else 0)
-            outputIndex += 2
+                writeShortLe(output, outputIndex, ampMono)
+                outputIndex += 2
 
-            writeShortLe(output, outputIndex, if (ch3Enabled) ampMono else 0)
-            outputIndex += 2
+                writeShortLe(output, outputIndex, if (ch3Enabled) ampMono else 0)
+                outputIndex += 2
 
-            writeShortLe(output, outputIndex, if (ch4Enabled) ampMono else 0)
-            outputIndex += 2
+                writeShortLe(output, outputIndex, if (ch4Enabled) ampMono else 0)
+                outputIndex += 2
+            } else {
+                writeShortLe(output, outputIndex, if (ch1Enabled) ampMono else 0)
+                outputIndex += 2
+
+                writeShortLe(output, outputIndex, if (ch2Enabled) ampMono else 0)
+                outputIndex += 2
+
+                writeShortLe(output, outputIndex, if (ch3Enabled) ampMono else 0)
+                outputIndex += 2
+
+                writeShortLe(output, outputIndex, if (ch4Enabled) ampMono else 0)
+                outputIndex += 2
+            }
         }
     }
 
@@ -710,7 +765,7 @@ class AudioControllerImpl private constructor(
         speakerKeepAliveJob?.cancel()
         speakerKeepAliveJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                runSpeakerHid()
+                runAudioRoutingHid()
                 kotlinx.coroutines.delay(1000)
             }
         }
@@ -722,21 +777,20 @@ class AudioControllerImpl private constructor(
     }
 
     private fun startInputReading() {
-        if (_uiState.value.isStreaming) return // Ne zavarjuk az audio streamet HID pollinggal
+        if (_uiState.value.isStreaming) return
 
         inputJob?.cancel()
         inputJob = scope.launch(Dispatchers.IO) {
             val buffer = ByteArray(64)
             while (isActive) {
                 val controller = dualSense ?: break
-                // Ha közben elindult a streaming, álljunk le
                 if (_uiState.value.isStreaming) break
 
                 val read = controller.receive(buffer, 20)
                 if (read > 0) {
                     parseInputReport(buffer)
                 } else {
-                    kotlinx.coroutines.delay(10) // Kicsit ritkább polling
+                    kotlinx.coroutines.delay(10)
                 }
             }
         }
@@ -758,8 +812,6 @@ class AudioControllerImpl private constructor(
         val t2X = ((report[39].toInt() and 0x0F) shl 8) or (report[38].toInt() and 0xFF)
         val t2Y = ((report[40].toInt() and 0xFF) shl 4) or ((report[39].toInt() and 0xF0) shr 4)
 
-        // Battery: Report 0x01, byte 53 (0-indexed)
-        // Bits 0-3: Capacity (0-8), Bit 4: Charging
         val batteryByte = report[53].toInt()
         val capacity = (batteryByte and 0x0F).coerceIn(0, 8)
         val batteryPercent = (capacity * 100) / 8
@@ -860,16 +912,121 @@ class AudioControllerImpl private constructor(
             .build()
     }
 
+    private fun runAudioRoutingHid(): String {
+        return if (_uiState.value.routeCh1) {
+            runJackRoutingHid()
+        } else {
+            val routeText = runSpeakerRoutingHid()
+            val wakeText = runSpeakerHid()
+            "$routeText / $wakeText"
+        }
+    }
+
+    private fun runJackRoutingHid(): String {
+        val device = findDualSenseDevice()
+            ?: return appContext.getString(R.string.log_no_usb_dualsense)
+
+        val ok = sendRoutingCommand(device, jackMode = true)
+
+        if (!ok && !_uiState.value.isStreaming) {
+            setControllerConnected(false)
+        }
+
+        return if (ok) "JACK route OK" else "JACK route Fail"
+    }
+
+    private fun runSpeakerRoutingHid(): String {
+        val device = findDualSenseDevice()
+            ?: return appContext.getString(R.string.log_no_usb_dualsense)
+
+        val ok = sendRoutingCommand(device, jackMode = false)
+
+        if (!ok && !_uiState.value.isStreaming) {
+            setControllerConnected(false)
+        }
+
+        return if (ok) "SPEAKER route OK" else "SPEAKER route Fail"
+    }
+
+    private fun sendRoutingCommand(device: UsbDevice, jackMode: Boolean): Boolean {
+        if (!usbManager.hasPermission(device)) {
+            requestPermission(device)
+            return false
+        }
+
+        val connection = routingUsbConnection ?: usbManager.openDevice(device)?.also {
+            routingUsbConnection = it
+        } ?: return false
+
+        val endpoint = routingHidOutEndpoint ?: findHidOutTarget(device)?.also { target ->
+            try {
+                connection.claimInterface(target.usbInterface, true)
+            } catch (_: Throwable) {
+            }
+
+            routingHidInterface = target.usbInterface
+            routingHidOutEndpoint = target.endpoint
+        }?.endpoint ?: return false
+
+        val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE) { 0 }
+
+        // ==================== DUALSENSE HID AUDIO ROUTING REPORT ====================
+
+        // 0x02 = USB output report ID.
+        report[0] = DS_OUTPUT_REPORT_USB.toByte()
+
+        // 0xE0:
+        // Bit5 = speaker volume enable
+        // Bit6 = mic volume enable
+        // Bit7 = audio routing enable
+        report[1] = 0xE0.toByte()
+
+        // Rumble OFF.
+        report[2] = 0x00.toByte()
+        report[3] = 0x00.toByte()
+
+        // 0x7F = headphone / JACK volume max.
+        report[5] = 0x7F.toByte()
+
+        if (jackMode) {
+            // JACK mód:
+            // 0x00 = internal speaker volume muted
+            // 0x00 = route to JACK / headset
+            report[6] = 0x00.toByte()
+            report[8] = 0x00.toByte()
+        } else {
+            // SPEAKER mód:
+            // 0xFF = internal speaker volume max
+            // 0x30 = route to internal speaker
+            report[6] = 0xFF.toByte()
+            report[8] = 0x30.toByte()
+        }
+
+        // 0x40 = mic volume placeholder.
+        report[7] = 0x40.toByte()
+
+        val result = try {
+            connection.bulkTransfer(endpoint, report, report.size, 100)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Routing HID bulkTransfer failed", t)
+            -1
+        }
+
+        return result == report.size
+    }
+
     private fun runSpeakerHid(): String {
         val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
         val controllerVolume = currentControllerVolume()
         val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
         report[0] = DS_OUTPUT_REPORT_USB.toByte()
 
-        // Original "magic bytes" for vibration and initialization
+        // Original speaker wake/routing magic bytes.
+        // Ezek maradnak a régi működéshez.
+        // JACK módban ezt nem közvetlenül hívjuk, hanem runAudioRoutingHid() választ útvonalat.
         report[1] = 0xF3.toByte()
         report[2] = 0x86.toByte()
-        
+
         report[3] = 0x00
         report[4] = 0x00
         report[5] = 0xFF.toByte()
@@ -878,17 +1035,39 @@ class AudioControllerImpl private constructor(
         report[8] = 0xFF.toByte()
 
         // These seem important for enabling the audio/vibration mix
-        report[39] = 0x03.toByte() 
+        report[39] = 0x03.toByte()
         report[42] = 0x02.toByte()
         report[44] = 0x24.toByte()
 
         val ok = controller.send(report)
-        
+
         if (!ok && !_uiState.value.isStreaming) {
             setControllerConnected(false)
         }
 
         return if (ok) "OK" else "Fail"
+    }
+
+    private fun findHidOutTarget(device: UsbDevice): HidOutTarget? {
+        for (i in 0 until device.interfaceCount) {
+            val intf = device.getInterface(i)
+
+            for (e in 0 until intf.endpointCount) {
+                val ep = intf.getEndpoint(e)
+
+                if (
+                    ep.direction == UsbConstants.USB_DIR_OUT &&
+                    ep.type == UsbConstants.USB_ENDPOINT_XFER_INT
+                ) {
+                    return HidOutTarget(
+                        usbInterface = intf,
+                        endpoint = ep
+                    )
+                }
+            }
+        }
+
+        return null
     }
 
     private fun openAudioRoute(device: UsbDevice): AudioRouteSession? {
@@ -984,7 +1163,7 @@ class AudioControllerImpl private constructor(
         closeController()
         val controller = DualSenseUsbController.open(usbManager, device)
         dualSense = controller
-        
+
         val success = controller != null
         setControllerConnected(success)
         if (success) {
@@ -1053,6 +1232,22 @@ class AudioControllerImpl private constructor(
     }
 
     private fun closeController() {
+        try {
+            routingHidInterface?.let { hidInterface ->
+                routingUsbConnection?.releaseInterface(hidInterface)
+            }
+        } catch (_: Throwable) {
+        }
+
+        try {
+            routingUsbConnection?.close()
+        } catch (_: Throwable) {
+        }
+
+        routingUsbConnection = null
+        routingHidOutEndpoint = null
+        routingHidInterface = null
+
         dualSense?.close()
         dualSense = null
         setControllerConnected(false)
@@ -1288,7 +1483,7 @@ class AudioControllerImpl private constructor(
                 if (state.hardwareVolumeButtonsControlController && state.controllerConnected) {
                     mediaSession?.let { session ->
                         if (!session.isActive) session.isActive = true
-                        
+
                         if (!state.isStreaming) {
                             requestAudioFocus()
                         }
@@ -1351,7 +1546,7 @@ class AudioControllerImpl private constructor(
         Log.d(TAG, "setControllerConnected: $connected")
         _uiState.update { it.copy(controllerConnected = connected) }
         updateMediaSession()
-        
+
         if (connected) {
             startInputReading()
         } else {
