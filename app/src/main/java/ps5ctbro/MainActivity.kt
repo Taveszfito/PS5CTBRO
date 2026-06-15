@@ -135,6 +135,7 @@ class MainActivity : AppCompatActivity() {
                     onRouteCh4Changed = { enabled ->
                         viewModel.setChannelEnabled(channel = 4, enabled = enabled)
                     },
+                    onGameModeChanged = viewModel::setGameMode,
                     onMutePhoneWhileStreamingChanged = viewModel::setMutePhoneWhileStreaming,
                     onHardwareVolumeButtonsControlControllerChanged =
                         viewModel::setHardwareVolumeButtonsControlController,

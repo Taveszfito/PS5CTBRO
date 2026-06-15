@@ -14,6 +14,10 @@ object NativeAudioBridge {
 
     external fun nativeIsoPushPcm(pcmData: ByteArray): Int
 
+    external fun nativeIsoSetQueueLimit(limit: Int): Int
+
+    external fun nativeIsoSetLowLatencyMode(enabled: Boolean): Int
+
     external fun nativeIsoStreamStop(): Int
 
     external fun nativeUsbDeviceReset(fd: Int): Int

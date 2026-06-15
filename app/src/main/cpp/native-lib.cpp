@@ -30,6 +30,9 @@ struct PendingUrbContext {
 static std::deque<std::vector<unsigned char>> g_pcmQueue;
 static std::mutex g_pcmMutex;
 static std::mutex g_urbMutex;
+static int g_pcmQueueLimit = 20;
+static int g_packetsPerUrb = PACKETS_PER_URB;
+static int g_numUrbs = NUM_URBS;
 
 static void freeUrbContext(PendingUrbContext* ctx) {
     if (!ctx) return;
@@ -47,11 +50,13 @@ static void freeUrbContext(PendingUrbContext* ctx) {
 static void* streamThreadFunction(void* /*arg*/) {
     int fd = g_streamFd;
     std::vector<PendingUrbContext*> urbPool;
+    const int packetsPerUrb = g_packetsPerUrb;
+    const int numUrbs = g_numUrbs;
 
-    for (int i = 0; i < NUM_URBS; ++i) {
-        size_t urbSize = sizeof(usbdevfs_urb) + PACKETS_PER_URB * sizeof(usbdevfs_iso_packet_desc);
+    for (int i = 0; i < numUrbs; ++i) {
+        size_t urbSize = sizeof(usbdevfs_urb) + packetsPerUrb * sizeof(usbdevfs_iso_packet_desc);
         auto* urb = reinterpret_cast<usbdevfs_urb*>(std::calloc(1, urbSize));
-        auto* buf = static_cast<unsigned char*>(std::malloc(PAYLOAD_SIZE * PACKETS_PER_URB));
+        auto* buf = static_cast<unsigned char*>(std::malloc(PAYLOAD_SIZE * packetsPerUrb));
 
         if (!urb || !buf) {
             if (urb) std::free(urb);
@@ -65,11 +70,11 @@ static void* streamThreadFunction(void* /*arg*/) {
         urb->endpoint = static_cast<unsigned char>(g_streamEndpointAddress);
         urb->flags = USBDEVFS_URB_ISO_ASAP;
         urb->buffer = buf;
-        urb->buffer_length = PAYLOAD_SIZE * PACKETS_PER_URB;
-        urb->number_of_packets = PACKETS_PER_URB;
+        urb->buffer_length = PAYLOAD_SIZE * packetsPerUrb;
+        urb->number_of_packets = packetsPerUrb;
         urb->usercontext = ctx;
 
-        for (int p = 0; p < PACKETS_PER_URB; ++p) {
+        for (int p = 0; p < packetsPerUrb; ++p) {
             urb->iso_frame_desc[p].length = PAYLOAD_SIZE;
         }
 
@@ -116,12 +121,12 @@ static void* streamThreadFunction(void* /*arg*/) {
         }
 
         if (chunk.empty()) {
-            std::memset(ctx->buffer, 0, PAYLOAD_SIZE * PACKETS_PER_URB);
+            std::memset(ctx->buffer, 0, PAYLOAD_SIZE * packetsPerUrb);
         } else {
-            size_t copyLen = std::min(chunk.size(), static_cast<size_t>(PAYLOAD_SIZE * PACKETS_PER_URB));
+            size_t copyLen = std::min(chunk.size(), static_cast<size_t>(PAYLOAD_SIZE * packetsPerUrb));
             std::memcpy(ctx->buffer, chunk.data(), copyLen);
-            if (copyLen < PAYLOAD_SIZE * PACKETS_PER_URB) {
-                std::memset(ctx->buffer + copyLen, 0, PAYLOAD_SIZE * PACKETS_PER_URB - copyLen);
+            if (copyLen < PAYLOAD_SIZE * packetsPerUrb) {
+                std::memset(ctx->buffer + copyLen, 0, PAYLOAD_SIZE * packetsPerUrb - copyLen);
             }
         }
 
@@ -193,12 +198,54 @@ Java_com_DueBoysenberry1226_ps5ctbro_audio_NativeAudioBridge_nativeIsoPushPcm(
     {
         std::lock_guard<std::mutex> lock(g_pcmMutex);
         // Megnöveltük 20-ra, hogy legyen tartalék a laggolás ellen
-        if (g_pcmQueue.size() < 20) {
+        if (g_pcmQueue.size() < static_cast<size_t>(g_pcmQueueLimit)) {
             g_pcmQueue.push_back(std::move(chunk));
         } else {
             g_pcmQueue.pop_front();
             g_pcmQueue.push_back(std::move(chunk));
         }
+    }
+
+    return 0;
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_DueBoysenberry1226_ps5ctbro_audio_NativeAudioBridge_nativeIsoSetQueueLimit(
+        JNIEnv* /*env*/, jobject /*thiz*/, jint limit) {
+
+    int clamped = limit;
+    if (clamped < 2) clamped = 2;
+    if (clamped > 20) clamped = 20;
+
+    {
+        std::lock_guard<std::mutex> lock(g_pcmMutex);
+        g_pcmQueueLimit = clamped;
+        while (g_pcmQueue.size() > static_cast<size_t>(g_pcmQueueLimit)) {
+            g_pcmQueue.pop_front();
+        }
+    }
+
+    return g_pcmQueueLimit;
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_DueBoysenberry1226_ps5ctbro_audio_NativeAudioBridge_nativeIsoSetLowLatencyMode(
+        JNIEnv* /*env*/, jobject /*thiz*/, jboolean enabled) {
+
+    if (g_streamRunning) {
+        return -1;
+    }
+
+    if (enabled) {
+        g_packetsPerUrb = 4;
+        g_numUrbs = 2;
+        g_pcmQueueLimit = 1;
+    } else {
+        g_packetsPerUrb = PACKETS_PER_URB;
+        g_numUrbs = NUM_URBS;
+        g_pcmQueueLimit = 20;
     }
 
     return 0;

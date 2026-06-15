@@ -14,6 +14,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -85,12 +86,15 @@ class VibrationController(private val context: Context) {
     }
 
     fun onScreenVisible() {
-        refreshConnection()
+        if (!ControllerRuntimeState.ledContinuousEffectActive) {
+            refreshConnection()
+        }
     }
 
     fun onScreenHidden() {
-        stopVibration()
-        closeHandle()
+        if (!ControllerRuntimeState.ledContinuousEffectActive) {
+            closeHandle()
+        }
         _uiState.update { it.copy(logText = appContext.getString(R.string.log_vibrate_screen_left)) }
     }
 
@@ -182,6 +186,10 @@ class VibrationController(private val context: Context) {
     }
 
     fun applyVibration(left: Boolean, right: Boolean) {
+        if (hidHandle == null) {
+            refreshConnection()
+        }
+
         val state = _uiState.value
         if (left) {
             leftJob?.cancel()

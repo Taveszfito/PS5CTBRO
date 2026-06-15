@@ -248,6 +248,7 @@
     <string name="label_speaker_abbr">Hangszóró</string>
     <string name="label_left_vib_abbr">Bal rezgő</string>
     <string name="label_right_vib_abbr">Jobb rezgő</string>
+    <string name="label_game_mode">Game mód basszus haptika</string>
     <string name="label_mute_abbr">Némítás</string>
     <string name="label_phone_abbr">telefon</string>
     <string name="label_hw_vol_abbr">HW hangerő</string>

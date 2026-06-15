@@ -19,6 +19,7 @@ interface AudioController {
     fun setVolumeStep(step: Int)
     fun setAudioGain(gain: Float)
     fun setChannelEnabled(channel: Int, enabled: Boolean)
+    fun setGameMode(enabled: Boolean)
 
     fun setMutePhoneWhileStreaming(enabled: Boolean)
     fun setHardwareVolumeButtonsControlController(enabled: Boolean)

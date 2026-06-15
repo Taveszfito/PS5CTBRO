@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -77,6 +78,7 @@ fun SpeakerScreen(
     onRouteCh2Changed: (Boolean) -> Unit,
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
+    onGameModeChanged: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
     onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
     showLogs: Boolean,
@@ -108,10 +110,12 @@ fun SpeakerScreen(
             routeCh2 = uiState.routeCh2,
             routeCh3 = uiState.routeCh3,
             routeCh4 = uiState.routeCh4,
+            gameMode = uiState.gameMode,
             onRouteCh1Changed = onRouteCh1Changed,
             onRouteCh2Changed = onRouteCh2Changed,
             onRouteCh3Changed = onRouteCh3Changed,
             onRouteCh4Changed = onRouteCh4Changed,
+            onGameModeChanged = onGameModeChanged,
             enabled = !isBtMode
         )
 
@@ -345,10 +349,12 @@ private fun ChannelRoutesCard(
     routeCh2: Boolean,
     routeCh3: Boolean,
     routeCh4: Boolean,
+    gameMode: Boolean,
     onRouteCh1Changed: (Boolean) -> Unit,
     onRouteCh2Changed: (Boolean) -> Unit,
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
+    onGameModeChanged: (Boolean) -> Unit,
     enabled: Boolean
 ) {
     SectionCard(
@@ -362,38 +368,81 @@ private fun ChannelRoutesCard(
             )
         }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ChannelTile(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Headset,
-                text = stringResource(R.string.label_channel_abbr),
-                checked = routeCh1,
-                onCheckedChange = onRouteCh1Changed
-            )
-            ChannelTile(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.VolumeUp,
-                text = stringResource(R.string.label_speaker_abbr),
-                checked = routeCh2,
-                onCheckedChange = onRouteCh2Changed
-            )
-            ChannelTile(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Waves,
-                text = stringResource(R.string.label_left_vib_abbr),
-                checked = routeCh3,
-                onCheckedChange = onRouteCh3Changed
-            )
-            ChannelTile(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Waves,
-                text = stringResource(R.string.label_right_vib_abbr),
-                checked = routeCh4,
-                onCheckedChange = onRouteCh4Changed
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ChannelTile(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Outlined.Headset,
+                    text = stringResource(R.string.label_channel_abbr),
+                    checked = routeCh1,
+                    onCheckedChange = onRouteCh1Changed,
+                    enabled = !gameMode
+                )
+                ChannelTile(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Outlined.VolumeUp,
+                    text = stringResource(R.string.label_speaker_abbr),
+                    checked = routeCh2,
+                    onCheckedChange = onRouteCh2Changed,
+                    enabled = !gameMode
+                )
+                ChannelTile(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Outlined.Waves,
+                    text = stringResource(R.string.label_left_vib_abbr),
+                    checked = routeCh3,
+                    onCheckedChange = onRouteCh3Changed
+                )
+                ChannelTile(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Outlined.Waves,
+                    text = stringResource(R.string.label_right_vib_abbr),
+                    checked = routeCh4,
+                    onCheckedChange = onRouteCh4Changed
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFF183055))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SportsEsports,
+                        contentDescription = null,
+                        tint = Color(0xFFB7D1FF),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.label_game_mode),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Switch(
+                    checked = gameMode,
+                    onCheckedChange = onGameModeChanged,
+                    enabled = enabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
         }
     }
 }
@@ -404,10 +453,11 @@ private fun ChannelTile(
     icon: ImageVector,
     text: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.alpha(if (enabled) 1f else 0.45f),
         shape = RoundedCornerShape(20.dp),
         color = Color(0xFF1B345C),
         border = BorderStroke(1.dp, Color(0xFF315487)),
@@ -446,6 +496,7 @@ private fun ChannelTile(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 modifier = Modifier.scale(0.74f),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,

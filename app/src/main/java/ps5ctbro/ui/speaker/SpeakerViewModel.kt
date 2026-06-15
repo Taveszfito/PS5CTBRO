@@ -56,6 +56,10 @@ class SpeakerViewModel(application: Application) : AndroidViewModel(application)
         controller.setChannelEnabled(channel, enabled)
     }
 
+    fun setGameMode(enabled: Boolean) {
+        controller.setGameMode(enabled)
+    }
+
     fun setMutePhoneWhileStreaming(enabled: Boolean) {
         controller.setMutePhoneWhileStreaming(enabled)
     }

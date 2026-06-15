@@ -14,6 +14,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
 import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -136,12 +137,18 @@ class InputTestControllerImpl(
 
     override fun onScreenVisible() {
         screenVisible = true
-        refreshConnection()
+        if (!ControllerRuntimeState.ledContinuousEffectActive) {
+            refreshConnection()
+        }
     }
 
     override fun onScreenHidden() {
         screenVisible = false
-        closeHandle()
+        if (!ControllerRuntimeState.ledContinuousEffectActive) {
+            closeHandle()
+        } else {
+            stopInputReader()
+        }
         _uiState.update {
             it.copy(
                 controllerConnected = false,

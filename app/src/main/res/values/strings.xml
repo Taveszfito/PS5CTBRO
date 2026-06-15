@@ -145,6 +145,7 @@
     <string name="label_speaker_abbr">Speaker</string>
     <string name="label_left_vib_abbr">Left Vib</string>
     <string name="label_right_vib_abbr">Right Vib</string>
+    <string name="label_game_mode">Game mode bass haptics</string>
     <string name="label_mute_abbr">Mute</string>
     <string name="label_phone_abbr">phone</string>
     <string name="label_hw_vol_abbr">HW vol.</string>

@@ -14,6 +14,8 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
+import com.DueBoysenberry1226.ps5ctbro.ui.led.LedControllerImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -82,8 +84,17 @@ class AdaptiveTriggerControllerImpl(
 
     init { registerReceiver() }
 
-    override fun onScreenVisible() { refreshConnection() }
-    override fun onScreenHidden() { closeHandle() }
+    override fun onScreenVisible() {
+        if (!ControllerRuntimeState.ledContinuousEffectActive) {
+            refreshConnection()
+        }
+    }
+
+    override fun onScreenHidden() {
+        if (!ControllerRuntimeState.ledContinuousEffectActive && !hasActiveTriggerConfig()) {
+            closeHandle()
+        }
+    }
 
     override fun updateTriggerConfig(side: TriggerSide, config: AdaptiveTriggerConfig) {
         _uiState.update { current ->
@@ -95,6 +106,9 @@ class AdaptiveTriggerControllerImpl(
     }
 
     override fun applyCurrentState() {
+        if (hidHandle == null) {
+            refreshConnection()
+        }
         lastLeftSentStrength = -1
         lastRightSentStrength = -1
         lastLeftConfig = null
@@ -136,9 +150,16 @@ class AdaptiveTriggerControllerImpl(
                 rightStrength = rightTargetStrength
             )
             
+            val ledWasActive = ControllerRuntimeState.ledContinuousEffectActive
             try {
                 handle.connection.bulkTransfer(handle.outEndpoint, report, report.size, 30)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            } finally {
+                if (ledWasActive) {
+                    closeHandle()
+                    LedControllerImpl.getInstance(appContext).resumeContinuousEffectAfterExternalHidReport()
+                }
+            }
         }
     }
 
@@ -217,6 +238,9 @@ class AdaptiveTriggerControllerImpl(
             )
         }
         applyCurrentState()
+        if (ControllerRuntimeState.ledContinuousEffectActive) {
+            closeHandle()
+        }
     }
 
     override fun release() {
@@ -228,6 +252,12 @@ class AdaptiveTriggerControllerImpl(
         val start = config.startPercent.coerceIn(0, 100)
         val end = config.endPercent.coerceIn(start, 100)
         return config.copy(startPercent = start, endPercent = end)
+    }
+
+    private fun hasActiveTriggerConfig(): Boolean {
+        val state = _uiState.value
+        return state.leftTrigger.effect != AdaptiveTriggerEffect.OFF ||
+                state.rightTrigger.effect != AdaptiveTriggerEffect.OFF
     }
 
     private fun setConnectionState(connected: Boolean, log: String) {

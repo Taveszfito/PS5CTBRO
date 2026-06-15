@@ -1,6 +1,7 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.led
 
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
+import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -199,17 +200,22 @@ class LedControllerImpl private constructor(
     override fun onScreenVisible() {
         screenVisible = true
         refreshConnection()
+        val config = _uiState.value.config
+        if (config.effect.isContinuousEffect() && !effectLoopRunning) {
+            applyConfig(config, triggeredByUserChange = false)
+        }
     }
 
     override fun onScreenHidden() {
         screenVisible = false
-        stopEffectLoop()
-        closeHandle()
-        _uiState.update {
-            it.copy(
-                controllerConnected = false,
-                logText = appContext.getString(R.string.log_led_screen_left)
-            )
+        if (!_uiState.value.config.effect.isContinuousEffect()) {
+            closeHandle()
+            _uiState.update {
+                it.copy(
+                    controllerConnected = false,
+                    logText = appContext.getString(R.string.log_led_screen_left)
+                )
+            }
         }
     }
 
@@ -351,6 +357,16 @@ class LedControllerImpl private constructor(
             closeHandle()
             setConnectionState(false, appContext.getString(R.string.log_static_led_failed))
         }
+    }
+
+    fun resumeContinuousEffectAfterExternalHidReport() {
+        val config = _uiState.value.config
+        if (!config.effect.isContinuousEffect()) return
+
+        stopEffectLoop()
+        closeHandle()
+        refreshConnection()
+        applyConfig(config, triggeredByUserChange = false)
     }
 
     private fun buildWakeKickReport(
@@ -530,6 +546,7 @@ class LedControllerImpl private constructor(
         if (effectLoopRunning) return
 
         effectLoopRunning = true
+        ControllerRuntimeState.ledContinuousEffectActive = config.effect.isContinuousEffect()
 
         effectThread = Thread {
             val startTime = SystemClock.elapsedRealtime()
@@ -736,6 +753,9 @@ class LedControllerImpl private constructor(
                     break
                 }
             }
+            if (!effectLoopRunning) {
+                ControllerRuntimeState.ledContinuousEffectActive = false
+            }
         }.apply {
             name = "DualSenseLedEffectLoop"
             isDaemon = true
@@ -745,8 +765,15 @@ class LedControllerImpl private constructor(
 
     private fun stopEffectLoop() {
         effectLoopRunning = false
+        ControllerRuntimeState.ledContinuousEffectActive = false
         effectThread?.interrupt()
         effectThread = null
+    }
+
+    private fun LedEffect.isContinuousEffect(): Boolean {
+        return this == LedEffect.BREATH ||
+                this == LedEffect.COLOR_CYCLE ||
+                this == LedEffect.MUSIC_REACTIVE
     }
 
     private fun calculateBreathColor(config: LedConfig, elapsedMs: Long): LedColor {
