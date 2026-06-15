@@ -183,7 +183,14 @@ class MainActivity : AppCompatActivity() {
                     onRefreshVibrationConnectionClick = vibrationViewModel::refreshConnection,
                     onLanguageSelected = settingsViewModel::setLanguage,
                     onGainChanged = settingsViewModel::setAudioGain,
-                    onShowLogWindowsChanged = settingsViewModel::setShowLogWindows
+                    onShowLogWindowsChanged = settingsViewModel::setShowLogWindows,
+                    onSettingsVersionClick = settingsViewModel::onVersionClicked,
+                    onByteTestNoteChanged = settingsViewModel::updateByteTestNote,
+                    onByteTestSendValueChanged = settingsViewModel::updateByteTestSendValue,
+                    onByteTestSendClick = settingsViewModel::sendByteTestValue,
+                    onByteTestSequenceAdd = settingsViewModel::addByteTestSequence,
+                    onByteTestSequenceDelete = settingsViewModel::deleteByteTestSequence,
+                    onByteTestSequencePlay = settingsViewModel::playByteTestSequence
                 )
             }
         }

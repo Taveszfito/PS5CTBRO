@@ -35,6 +35,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.ByteTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.MotionSensorsScreen
@@ -42,6 +43,8 @@ import com.DueBoysenberry1226.ps5ctbro.ui.screens.SettingsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.VibrationScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
+import com.DueBoysenberry1226.ps5ctbro.ui.settings.ByteTestCommand
+import com.DueBoysenberry1226.ps5ctbro.ui.settings.ByteTestSequenceMode
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.BlueBright
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.Midnight700
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.Midnight800
@@ -101,7 +104,14 @@ fun AppRoot(
     onRefreshVibrationConnectionClick: () -> Unit,
     onLanguageSelected: (String) -> Unit,
     onGainChanged: (Float) -> Unit,
-    onShowLogWindowsChanged: (Boolean) -> Unit
+    onShowLogWindowsChanged: (Boolean) -> Unit,
+    onSettingsVersionClick: () -> Unit,
+    onByteTestNoteChanged: (String, String) -> Unit,
+    onByteTestSendValueChanged: (String, String) -> Unit,
+    onByteTestSendClick: (String, Int, String) -> Unit,
+    onByteTestSequenceAdd: (String, ByteTestSequenceMode, List<ByteTestCommand>) -> Unit,
+    onByteTestSequenceDelete: (String) -> Unit,
+    onByteTestSequencePlay: (String) -> Unit
 ) {
     val showLogs = settingsUiState.showLogWindows
 
@@ -172,6 +182,7 @@ fun AppRoot(
             drawerContent = {
                 AppDrawerContent(
                     currentSection = currentSection,
+                    showByteTest = settingsUiState.byteTestUnlocked,
                     onSectionSelected = { selected ->
                         currentSection = selected
                         scope.launch { drawerState.close() }
@@ -294,13 +305,30 @@ fun AppRoot(
                                 )
                             }
 
+                            AppSection.BYTE_TEST -> {
+                                ByteTestScreen(
+                                    notes = settingsUiState.byteTestNotes,
+                                    sendValues = settingsUiState.byteTestSendValues,
+                                    sendLog = settingsUiState.byteTestSendLog,
+                                    sequences = settingsUiState.byteTestSequences,
+                                    playingSequenceId = settingsUiState.byteTestPlayingSequenceId,
+                                    onNoteChanged = onByteTestNoteChanged,
+                                    onSendValueChanged = onByteTestSendValueChanged,
+                                    onSendClick = onByteTestSendClick,
+                                    onAddSequence = onByteTestSequenceAdd,
+                                    onDeleteSequence = onByteTestSequenceDelete,
+                                    onPlaySequence = onByteTestSequencePlay
+                                )
+                            }
+
                             AppSection.SETTINGS -> {
                                 SettingsScreen(
                                     uiState = settingsUiState,
                                     onLanguageSelected = onLanguageSelected,
                                     onGainChanged = onGainChanged,
                                     onShowLogWindowsChanged = onShowLogWindowsChanged,
-                                    onRefreshControllerInfo = onRefreshControllerConnectionClick
+                                    onRefreshControllerInfo = onRefreshControllerConnectionClick,
+                                    onVersionClick = onSettingsVersionClick
                                 )
                             }
                         }

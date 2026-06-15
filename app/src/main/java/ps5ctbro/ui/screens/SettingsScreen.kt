@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.FilterChip
@@ -33,7 +34,8 @@ fun SettingsScreen(
     onLanguageSelected: (String) -> Unit,
     onGainChanged: (Float) -> Unit,
     onShowLogWindowsChanged: (Boolean) -> Unit,
-    onRefreshControllerInfo: () -> Unit
+    onRefreshControllerInfo: () -> Unit,
+    onVersionClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -59,7 +61,8 @@ fun SettingsScreen(
         )
 
         AboutCard(
-            version = uiState.appVersion
+            version = uiState.appVersion,
+            onVersionClick = onVersionClick
         )
     }
 }
@@ -218,11 +221,18 @@ private fun LanguageCard(
 }
 
 @Composable
-private fun AboutCard(version: String) {
+private fun AboutCard(
+    version: String,
+    onVersionClick: () -> Unit
+) {
     SectionCard(title = stringResource(R.string.card_title_about)) {
-        StatusRow(
-            label = stringResource(R.string.label_version),
-            value = version
-        )
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.clickable(onClick = onVersionClick)
+        ) {
+            StatusRow(
+                label = stringResource(R.string.label_version),
+                value = version
+            )
+        }
     }
 }

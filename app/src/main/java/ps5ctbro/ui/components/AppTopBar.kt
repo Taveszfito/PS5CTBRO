@@ -74,6 +74,7 @@ fun AppTopBar(
 @Composable
 fun AppDrawerContent(
     currentSection: AppSection,
+    showByteTest: Boolean,
     onSectionSelected: (AppSection) -> Unit,
     onCloseClick: () -> Unit
 ) {
@@ -118,7 +119,9 @@ fun AppDrawerContent(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
             )
 
-            AppSection.entries.forEach { section ->
+            AppSection.entries
+                .filter { section -> section != AppSection.BYTE_TEST || showByteTest }
+                .forEach { section ->
                 NavigationDrawerItem(
                     label = {
                         Text(
