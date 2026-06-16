@@ -22,7 +22,11 @@ local.properties
 *.aab
 *.ap_
 *.idsig
+app/release/
 
 # Android Studio
 .idea/
 *.iml
+
+# Local DualSense research notes
+/DualSense byte tutorial.txt

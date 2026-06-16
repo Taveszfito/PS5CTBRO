@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -34,10 +39,14 @@ import com.DueBoysenberry1226.ps5ctbro.ui.components.MiniInfoPill
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
+import com.DueBoysenberry1226.ps5ctbro.ui.mictest.MicPlaybackTarget
+import com.DueBoysenberry1226.ps5ctbro.ui.mictest.MicTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.ByteTestDocsDialog
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.ByteTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.MicTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.MotionSensorsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SettingsScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.SpeakerScreen
@@ -58,6 +67,7 @@ fun AppRoot(
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
     ledUiState: LedUiState,
     inputTestUiState: InputTestUiState,
+    micTestUiState: MicTestUiState,
     btTouchpadSensitivity: Float,
     onBtTouchpadSensitivityChange: (Float) -> Unit,
     vibrationUiState: VibrationUiState,
@@ -93,6 +103,12 @@ fun AppRoot(
     onInputTestScreenVisible: () -> Unit,
     onInputTestScreenHidden: () -> Unit,
     onRefreshInputTestConnectionClick: () -> Unit,
+    onMicDurationChanged: (Int) -> Unit,
+    onMicPlaybackTargetChanged: (MicPlaybackTarget) -> Unit,
+    onMicStartRecording: () -> Unit,
+    onMicStopRecording: () -> Unit,
+    onMicPlay: () -> Unit,
+    onMicStopPlayback: () -> Unit,
     onVibrationScreenVisible: () -> Unit,
     onVibrationScreenHidden: () -> Unit,
     onVibrationStrengthLeftChanged: (Int) -> Unit,
@@ -122,6 +138,7 @@ fun AppRoot(
     var currentSection by rememberSaveable {
         mutableStateOf(AppSection.SPEAKER)
     }
+    var showByteDocs by rememberSaveable { mutableStateOf(false) }
 
     val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
     val ledScreenVisible = currentSection == AppSection.LEDS
@@ -205,6 +222,16 @@ fun AppRoot(
                             }
                         },
                         actions = {
+                            if (currentSection == AppSection.BYTE_TEST) {
+                                IconButton(onClick = { showByteDocs = true }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.MenuBook,
+                                        contentDescription = "Byte documentation",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
                             MiniInfoPill(
                                 text = controllerConnectionUiState.shortLabel,
                                 modifier = Modifier
@@ -291,6 +318,18 @@ fun AppRoot(
                                 )
                             }
 
+                            AppSection.MIC_TEST -> {
+                                MicTestScreen(
+                                    uiState = micTestUiState,
+                                    onDurationChanged = onMicDurationChanged,
+                                    onPlaybackTargetChanged = onMicPlaybackTargetChanged,
+                                    onStartRecording = onMicStartRecording,
+                                    onStopRecording = onMicStopRecording,
+                                    onPlay = onMicPlay,
+                                    onStopPlayback = onMicStopPlayback
+                                )
+                            }
+
                             AppSection.VIBRATE_TEST -> {
                                 VibrationScreen(
                                     uiState = vibrationUiState,
@@ -338,5 +377,9 @@ fun AppRoot(
                 }
             }
         }
+    }
+
+    if (showByteDocs) {
+        ByteTestDocsDialog(onDismiss = { showByteDocs = false })
     }
 }

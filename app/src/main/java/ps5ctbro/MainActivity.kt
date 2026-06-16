@@ -24,6 +24,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.AppRoot
 import com.DueBoysenberry1226.ps5ctbro.ui.adaptive.AdaptiveTriggersViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedViewModel
+import com.DueBoysenberry1226.ps5ctbro.ui.mictest.MicTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.vibrate.VibrationViewModel
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private val controllerConnectionViewModel: ControllerConnectionViewModel by viewModels()
     private val vibrationViewModel: VibrationViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val micTestViewModel: MicTestViewModel by viewModels()
 
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -55,6 +57,15 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
             launchCapturePermission()
+        }
+
+    private val micTestRecordPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                micTestViewModel.startRecording()
+            } else {
+                micTestViewModel.onRecordAudioPermissionDenied()
+            }
         }
 
     private val capturePermissionLauncher =
@@ -103,6 +114,7 @@ class MainActivity : AppCompatActivity() {
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
                 val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
                 val inputTestUiState by inputTestViewModel.uiState.collectAsStateWithLifecycle()
+                val micTestUiState by micTestViewModel.uiState.collectAsStateWithLifecycle()
                 val btTouchpadSensitivity by inputTestViewModel.btTouchpadSensitivity.collectAsStateWithLifecycle()
                 val vibrationUiState by vibrationViewModel.uiState.collectAsStateWithLifecycle()
                 val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -113,6 +125,7 @@ class MainActivity : AppCompatActivity() {
                     adaptiveTriggersUiState = adaptiveTriggersUiState,
                     ledUiState = ledUiState,
                     inputTestUiState = inputTestUiState,
+                    micTestUiState = micTestUiState,
                     vibrationUiState = vibrationUiState,
                     controllerConnectionUiState = controllerConnectionUiState,
                     onRefreshControllerConnectionClick = controllerConnectionViewModel::refresh,
@@ -172,6 +185,12 @@ class MainActivity : AppCompatActivity() {
                         releaseInputTestPointerCapture()
                     },
                     onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection,
+                    onMicDurationChanged = micTestViewModel::setDurationSeconds,
+                    onMicPlaybackTargetChanged = micTestViewModel::setPlaybackTarget,
+                    onMicStartRecording = ::handleMicTestStartRecording,
+                    onMicStopRecording = micTestViewModel::stopRecording,
+                    onMicPlay = micTestViewModel::playRecording,
+                    onMicStopPlayback = micTestViewModel::stopPlayback,
                     onVibrationScreenVisible = vibrationViewModel::onScreenVisible,
                     onVibrationScreenHidden = vibrationViewModel::onScreenHidden,
                     onVibrationStrengthLeftChanged = vibrationViewModel::setStrengthLeft,
@@ -250,6 +269,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkNotificationPermission()
+    }
+
+    private fun handleMicTestStartRecording() {
+        val hasRecordAudioPermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasRecordAudioPermission) {
+            micTestRecordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+
+        micTestViewModel.startRecording()
     }
 
     private fun checkNotificationPermission() {

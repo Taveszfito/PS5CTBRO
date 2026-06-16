@@ -6,18 +6,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
@@ -25,6 +31,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSwitchRow
 import com.DueBoysenberry1226.ps5ctbro.ui.components.SectionCard
 import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
+import com.DueBoysenberry1226.ps5ctbro.ui.theme.PanelStroke
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
 import kotlin.math.roundToInt
 
@@ -225,14 +232,59 @@ private fun AboutCard(
     version: String,
     onVersionClick: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+
     SectionCard(title = stringResource(R.string.card_title_about)) {
-        androidx.compose.foundation.layout.Box(
-            modifier = Modifier.clickable(onClick = onVersionClick)
-        ) {
-            StatusRow(
-                label = stringResource(R.string.label_version),
-                value = version
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.clickable(onClick = onVersionClick)
+            ) {
+                StatusRow(
+                    label = stringResource(R.string.label_version),
+                    value = version
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.label_developer),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                AssistChip(
+                    onClick = {
+                        uriHandler.openUri("https://github.com/Taveszfito")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_github),
+                            contentDescription = "GitHub",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "Taveszfito",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        labelColor = MaterialTheme.colorScheme.primary,
+                        leadingIconContentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = PanelStroke.copy(alpha = 0.65f)
+                    )
+                )
+            }
         }
     }
 }

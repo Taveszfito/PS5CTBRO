@@ -23,7 +23,7 @@ enum class PlayerLedBrightness(
 
 data class LedColor(
     val red: Int = 0,
-    val green: Int = 114,
+    val green: Int = 0,
     val blue: Int = 255
 )
 

@@ -268,7 +268,7 @@ class LedControllerImpl private constructor(
 
         val defaultConfig = LedConfig(
             effect = LedEffect.STATIC,
-            color = LedColor(0, 114, 255),
+            color = LedColor(0, 0, 255),
             lightbarBrightnessPercent = 100,
             animationSpeedPercent = 50,
             playerLedBrightness = PlayerLedBrightness.HIGH,
@@ -316,7 +316,7 @@ class LedControllerImpl private constructor(
 
         val wakeConfig = LedConfig(
             effect = LedEffect.STATIC,
-            color = LedColor(0, 114, 255),
+            color = LedColor(0, 0, 255),
             lightbarBrightnessPercent = 100,
             animationSpeedPercent = 50,
             playerLedBrightness = PlayerLedBrightness.HIGH,

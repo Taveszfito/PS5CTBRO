@@ -25,11 +25,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.AppSection
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PanelStroke
@@ -42,14 +48,30 @@ fun AppTopBar(
     onMenuClick: () -> Unit,
     actions: @Composable () -> Unit = {}
 ) {
+    val titleStyle = MaterialTheme.typography.headlineMedium
+    val maxTitleFontSize = titleStyle.fontSize.takeIf { it.value > 0f } ?: 28.sp
+    val minTitleFontSize = 18.sp
+    var titleFontSize by remember(title) { mutableStateOf(maxTitleFontSize) }
+
     TopAppBar(
         title = {
             Row {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = titleStyle.copy(fontSize = titleFontSize),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip,
+                    onTextLayout = { result ->
+                        if (result.hasVisualOverflow && titleFontSize.value > minTitleFontSize.value) {
+                            titleFontSize = (titleFontSize.value - 1f)
+                                .coerceAtLeast(minTitleFontSize.value)
+                                .sp
+                        }
+                    }
                 )
             }
         },

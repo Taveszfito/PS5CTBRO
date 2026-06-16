@@ -574,19 +574,19 @@ private fun PresetColorRow(
         ) {
             PresetColorChip(
                 stringResource(R.string.color_blue),
-                LedColor(0, 114, 255),
+                LedColor(0, 0, 255),
                 onColorPicked,
                 Modifier.weight(1f)
             )
             PresetColorChip(
                 stringResource(R.string.color_red),
-                LedColor(255, 40, 40),
+                LedColor(255, 0, 0),
                 onColorPicked,
                 Modifier.weight(1f)
             )
             PresetColorChip(
                 stringResource(R.string.color_green),
-                LedColor(40, 255, 120),
+                LedColor(0, 255, 0),
                 onColorPicked,
                 Modifier.weight(1f)
             )

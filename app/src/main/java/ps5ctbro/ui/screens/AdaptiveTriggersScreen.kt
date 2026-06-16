@@ -194,6 +194,8 @@ private fun TriggerConfigCard(
         title = stringResource(R.string.card_title_settings),
         enabled = enabled
     ) {
+        val applyEnabled = enabled && config.effect != AdaptiveTriggerEffect.OFF
+
         Text(
             text = stringResource(R.string.label_effect_type),
             style = MaterialTheme.typography.titleSmall,
@@ -311,6 +313,7 @@ private fun TriggerConfigCard(
         ) {
             Button(
                 onClick = { onApplyL2(config) },
+                enabled = applyEnabled,
                 modifier = Modifier
                     .weight(1f)
                     .height(44.dp),
@@ -339,6 +342,7 @@ private fun TriggerConfigCard(
 
             Button(
                 onClick = { onApplyR2(config) },
+                enabled = applyEnabled,
                 modifier = Modifier
                     .weight(1f)
                     .height(44.dp),

@@ -4,6 +4,7 @@
     <string name="section_adaptive_triggers">Adaptive Triggerek</string>
     <string name="section_leds">LED vezérlés</string>
     <string name="section_input_test">Input Test</string>
+    <string name="section_mic_test">Mikrofon Teszt</string>
     <string name="section_vibrate_test">Rezgés teszt</string>
     <string name="section_byte_test">Byte teszt</string>
     <string name="section_settings">Beállítások</string>
@@ -107,6 +108,19 @@
     <string name="button_apply_left">ALKALMAZ BALRA</string>
     <string name="button_apply_right">ALKALMAZ JOBBRA</string>
     <string name="button_stop_vibration">REZEGÉS MEGÁLLÍTÁSA</string>
+    <string name="card_title_mic_recording">Felvétel</string>
+    <string name="card_title_playback_target">Lejátszás célja</string>
+    <string name="card_title_audio_visualizer">Hang vizualizáció</string>
+    <string name="label_recording_duration">Felvétel hossza</string>
+    <string name="label_seconds_value">%1$d mp</string>
+    <string name="label_recorded_duration">Felvéve: %1$.1f mp</string>
+    <string name="label_phone_speaker">Telefon hangszóró</string>
+    <string name="label_controller_speaker">Kontroller hangszóró</string>
+    <string name="button_record">FELVÉTEL</string>
+    <string name="button_stop_recording">LEÁLLÍTÁS</string>
+    <string name="button_play">LEJÁTSZÁS</string>
+    <string name="button_stop_playback">LEÁLLÍTÁS</string>
+    <string name="msg_no_mic_recording">Még nincs felvétel</string>
     <string name="log_vibration_applied">Rezgés alkalmazva: %1$s.</string>
     <string name="log_vibration_stopped">Rezgés megállítva.</string>
     <string name="log_vibrate_screen_left">Rezgés képernyő elhagyva, HID kapcsolat elengedve.</string>
@@ -196,6 +210,7 @@
 
     <string name="card_title_about">Az alkalmazásról</string>
     <string name="label_version">Verzió</string>
+    <string name="label_developer">Fejlesztő</string>
 
     <string name="card_title_audio_gain">Audio Erősítés (Gain)</string>
     <string name="label_audio_gain">Erősítés</string>
@@ -299,6 +314,12 @@
     <string name="button_delete">TÖRLÉS</string>
     <string name="button_add_command">ÚJ PARANCS HOZZÁADÁSA</string>
     <string name="msg_no_byte_sequences">Nincs mentett sorozat.</string>
+    <string name="byte_test_docs_title">Beillesztési formátum</string>
+    <string name="byte_test_docs_intro">A Byte Test a vágólapról olyan sorokat tud beolvasni, ahol egy byte indexhez egy kétjegyű hex érték tartozik.</string>
+    <string name="byte_test_docs_spacing">A szóközök nem kritikusak: [0] = 02 és [0]=02 is jó. Kisbetűs hexet is elfogad, beillesztéskor nagybetűsíti.</string>
+    <string name="byte_test_docs_name_mode">Ha nevet és módot is adsz meg, a sorozatkészítő ezeket is átveszi. A mode lehet FULL_REPORT vagy SERIES.</string>
+    <string name="byte_test_docs_modes">Full report módban a megadott indexek a teljes report megfelelő helyére kerülnek, a többi byte 00 marad. Series módban a sorok egymás után küldött parancsokként játszhatók le.</string>
+    <string name="byte_test_docs_error_handling">Ha egy sor hibás, az app nem keveri be félig: javítsd a formátumot, és illeszd be újra.</string>
     <string name="dialog_title_new_sequence">Új sorozat</string>
     <string name="dialog_title_delete_sequence">Törlöd a sorozatot?</string>
     <string name="label_sequence_name">Név</string>

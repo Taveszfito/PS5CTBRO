@@ -5,6 +5,7 @@
     <string name="section_leds">LED Control</string>
     <string name="section_input_test">Input Test</string>
     <string name="section_motion_sensors">Gyroscope Test</string>
+    <string name="section_mic_test">Microphone Test</string>
     <string name="section_vibrate_test">Vibration Test</string>
     <string name="section_byte_test">Byte Test</string>
     <string name="section_settings">Settings</string>
@@ -108,6 +109,19 @@
     <string name="button_apply_left">APPLY LEFT</string>
     <string name="button_apply_right">APPLY RIGHT</string>
     <string name="button_stop_vibration">STOP VIBRATION</string>
+    <string name="card_title_mic_recording">Recording</string>
+    <string name="card_title_playback_target">Playback Target</string>
+    <string name="card_title_audio_visualizer">Audio Visualization</string>
+    <string name="label_recording_duration">Recording Length</string>
+    <string name="label_seconds_value">%1$d s</string>
+    <string name="label_recorded_duration">Recorded: %1$.1f s</string>
+    <string name="label_phone_speaker">Phone Speaker</string>
+    <string name="label_controller_speaker">Controller Speaker</string>
+    <string name="button_record">RECORD</string>
+    <string name="button_stop_recording">STOP</string>
+    <string name="button_play">PLAY</string>
+    <string name="button_stop_playback">STOP</string>
+    <string name="msg_no_mic_recording">No recording yet</string>
     <string name="log_vibration_applied">Vibration applied to %1$s.</string>
     <string name="log_vibration_stopped">Vibration stopped.</string>
     <string name="log_vibrate_screen_left">Vibration screen left, HID connection released.</string>
@@ -250,6 +264,7 @@
 
     <string name="card_title_about">About this app</string>
     <string name="label_version">Version</string>
+    <string name="label_developer">Developer</string>
 
     <string name="card_title_audio_gain">Audio Gain</string>
     <string name="label_audio_gain">Gain</string>
@@ -318,6 +333,12 @@
     <string name="button_delete">DELETE</string>
     <string name="button_add_command">ADD COMMAND</string>
     <string name="msg_no_byte_sequences">No saved sequences.</string>
+    <string name="byte_test_docs_title">Paste format</string>
+    <string name="byte_test_docs_intro">Byte Test can read clipboard lines where a byte index is assigned a two-digit hex value.</string>
+    <string name="byte_test_docs_spacing">Spaces are flexible: [0] = 02 and [0]=02 are both valid. Lowercase hex is accepted and normalized to uppercase when pasted.</string>
+    <string name="byte_test_docs_name_mode">If you include a name and mode, the sequence editor will import those too. Mode can be FULL_REPORT or SERIES.</string>
+    <string name="byte_test_docs_modes">In Full report mode, the listed indexes are written into their positions in one full report, while every other byte remains 00. In Series mode, the lines can be played as commands sent one after another.</string>
+    <string name="byte_test_docs_error_handling">If any line is invalid, the app will not partially mix it in. Fix the format and paste again.</string>
     <string name="dialog_title_new_sequence">New Sequence</string>
     <string name="dialog_title_delete_sequence">Delete sequence?</string>
     <string name="label_sequence_name">Name</string>

@@ -13,6 +13,7 @@ import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.core.content.ContextCompat
@@ -48,6 +49,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private var byteTestReceiverRegistered = false
     private var pendingByteSend: PendingByteSend? = null
     private var byteTestHandle: HidOutHandle? = null
+    private var byteTestToast: Toast? = null
 
     private val _uiState = MutableStateFlow(
         SettingsUiState(
@@ -191,22 +193,39 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onVersionClicked() {
-        if (_uiState.value.byteTestUnlocked) return
+        val current = _uiState.value
+        val nextCount = (current.byteTestUnlockTapCount + 1).coerceAtMost(BYTE_TEST_UNLOCK_TAPS)
+        val remaining = BYTE_TEST_UNLOCK_TAPS - nextCount
 
-        val nextCount = (_uiState.value.byteTestUnlockTapCount + 1).coerceAtMost(BYTE_TEST_UNLOCK_TAPS)
-        val unlocked = nextCount >= BYTE_TEST_UNLOCK_TAPS
-
-        if (unlocked) {
-            preferences.edit()
-                .putBoolean(KEY_BYTE_TEST_UNLOCKED, true)
-                .apply()
+        if (remaining > 0) {
+            val action = if (current.byteTestUnlocked) {
+                "elrejtéséig"
+            } else {
+                "feloldásáig"
+            }
+            showByteTestToast("Még $remaining érintés van hátra a Byte Test képernyő $action.")
+            _uiState.update {
+                it.copy(byteTestUnlockTapCount = nextCount)
+            }
+            return
         }
+
+        val unlocked = !current.byteTestUnlocked
+        preferences.edit()
+            .putBoolean(KEY_BYTE_TEST_UNLOCKED, unlocked)
+            .apply()
 
         _uiState.update {
             it.copy(
-                byteTestUnlockTapCount = nextCount,
+                byteTestUnlockTapCount = 0,
                 byteTestUnlocked = unlocked
             )
+        }
+
+        if (unlocked) {
+            showByteTestToast("Byte Test képernyő sikeresen feloldva. $BYTE_TEST_UNLOCK_TAPS érintés kell még az elrejtésig.")
+        } else {
+            showByteTestToast("Byte Test képernyő elrejtve. $BYTE_TEST_UNLOCK_TAPS érintés kell még a feloldásig.")
         }
     }
 
@@ -682,6 +701,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun setByteTestLog(text: String) {
         _uiState.update { it.copy(byteTestSendLog = text) }
+    }
+
+    private fun showByteTestToast(message: String) {
+        byteTestToast?.cancel()
+        byteTestToast = Toast.makeText(appContext, message, Toast.LENGTH_SHORT).also {
+            it.show()
+        }
     }
 
     private fun parseByteValue(rawValue: String): Int? {
