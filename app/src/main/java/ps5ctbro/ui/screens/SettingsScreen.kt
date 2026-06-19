@@ -1,5 +1,6 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,14 +15,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +36,21 @@ import com.DueBoysenberry1226.ps5ctbro.ui.components.StatusRow
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PanelStroke
 import com.DueBoysenberry1226.ps5ctbro.ui.settings.SettingsUiState
 import kotlin.math.roundToInt
+
+private data class LanguageOption(
+    val tag: String,
+    val labelRes: Int
+)
+
+private val languageOptions = listOf(
+    LanguageOption("en", R.string.label_language_english),
+    LanguageOption("hu", R.string.label_language_hungarian),
+    LanguageOption("es", R.string.label_language_spanish),
+    LanguageOption("de", R.string.label_language_german),
+    LanguageOption("fr", R.string.label_language_french),
+    LanguageOption("pt-BR", R.string.label_language_portuguese_brazil),
+    LanguageOption("ja", R.string.label_language_japanese)
+)
 
 @Composable
 fun SettingsScreen(
@@ -206,23 +223,61 @@ private fun LanguageCard(
     onLanguageSelected: (String) -> Unit
 ) {
     SectionCard(title = stringResource(R.string.card_title_language)) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
-                selected = currentLanguage == "en",
-                onClick = { onLanguageSelected("en") },
-                label = { Text(stringResource(R.string.label_language_english)) },
-                modifier = Modifier.weight(1f)
+            languageOptions.forEach { option ->
+                LanguageRow(
+                    label = stringResource(option.labelRes),
+                    selected = currentLanguage == option.tag,
+                    onClick = { onLanguageSelected(option.tag) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
+        },
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else PanelStroke.copy(alpha = 0.65f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            FilterChip(
-                selected = currentLanguage == "hu",
-                onClick = { onLanguageSelected("hu") },
-                label = { Text(stringResource(R.string.label_language_hungarian)) },
-                modifier = Modifier.weight(1f)
-            )
+            if (selected) {
+                Text(
+                    text = stringResource(R.string.label_active),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

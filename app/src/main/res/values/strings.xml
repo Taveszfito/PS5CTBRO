@@ -252,6 +252,11 @@
     <string name="card_title_language">Language</string>
     <string name="label_language_english">English</string>
     <string name="label_language_hungarian">Hungarian</string>
+    <string name="label_language_spanish">Spanish</string>
+    <string name="label_language_german">German</string>
+    <string name="label_language_french">French</string>
+    <string name="label_language_portuguese_brazil">Portuguese (Brazil)</string>
+    <string name="label_language_japanese">Japanese</string>
 
     <string name="card_title_controller_info">About my controller</string>
     <string name="label_connection_status">Connection status</string>

@@ -38,6 +38,8 @@ import org.json.JSONObject
 import java.util.Locale
 import java.util.UUID
 
+private val SUPPORTED_LANGUAGE_TAGS = setOf("en", "hu", "es", "de", "fr", "pt-BR", "ja")
+
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val audioController: AudioController = AudioControllerImpl.getInstance(application)
@@ -154,12 +156,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun getCurrentLanguageCode(): String {
         val locales = AppCompatDelegate.getApplicationLocales()
-        val lang = if (locales.isEmpty) {
-            Locale.getDefault().language
+        val tag = if (locales.isEmpty) {
+            Locale.getDefault().toLanguageTag()
         } else {
-            locales.get(0)?.language
+            locales.get(0)?.toLanguageTag()
         }
-        return if (lang?.startsWith("hu", ignoreCase = true) == true) "hu" else "en"
+        return when {
+            tag.isNullOrBlank() -> "en"
+            SUPPORTED_LANGUAGE_TAGS.contains(tag) -> tag
+            tag.startsWith("hu", ignoreCase = true) -> "hu"
+            tag.startsWith("es", ignoreCase = true) -> "es"
+            tag.startsWith("de", ignoreCase = true) -> "de"
+            tag.startsWith("fr", ignoreCase = true) -> "fr"
+            tag.startsWith("pt", ignoreCase = true) -> "pt-BR"
+            tag.startsWith("ja", ignoreCase = true) -> "ja"
+            else -> "en"
+        }
     }
 
     private fun getVersionName(): String {

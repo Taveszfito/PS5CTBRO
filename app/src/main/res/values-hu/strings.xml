@@ -194,6 +194,11 @@
     <string name="card_title_language">Nyelv</string>
     <string name="label_language_english">Angol</string>
     <string name="label_language_hungarian">Magyar</string>
+    <string name="label_language_spanish">Spanyol</string>
+    <string name="label_language_german">Német</string>
+    <string name="label_language_french">Francia</string>
+    <string name="label_language_portuguese_brazil">Portugál (Brazília)</string>
+    <string name="label_language_japanese">Japán</string>
 
     <string name="card_title_controller_info">Kontrollerem adatai</string>
     <string name="label_connection_status">Csatlakozás állapota</string>
