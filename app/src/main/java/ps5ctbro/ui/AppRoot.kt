@@ -83,6 +83,8 @@ fun AppRoot(
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
     onGameModeChanged: (Boolean) -> Unit,
+    onGameModeAdaptiveStrengthChanged: (Boolean) -> Unit,
+    onGameModePreciseReactionChanged: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
     onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
     onSpeakerScreenVisible: () -> Unit,
@@ -267,6 +269,8 @@ fun AppRoot(
                                     onRouteCh3Changed = onRouteCh3Changed,
                                     onRouteCh4Changed = onRouteCh4Changed,
                                     onGameModeChanged = onGameModeChanged,
+                                    onGameModeAdaptiveStrengthChanged = onGameModeAdaptiveStrengthChanged,
+                                    onGameModePreciseReactionChanged = onGameModePreciseReactionChanged,
                                     onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
                                     onHardwareVolumeButtonsControlControllerChanged = onHardwareVolumeButtonsControlControllerChanged,
                                     showLogs = showLogs

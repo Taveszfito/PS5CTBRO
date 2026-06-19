@@ -13,7 +13,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "2.2 "
+        versionName = "2.3"
     }
 
     externalNativeBuild {
@@ -38,6 +38,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }
 

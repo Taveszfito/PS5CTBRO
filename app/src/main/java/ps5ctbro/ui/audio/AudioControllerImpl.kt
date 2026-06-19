@@ -249,6 +249,8 @@ class AudioControllerImpl private constructor(
     private var routingHidInterface: UsbInterface? = null
     private val routeHidMutex = Mutex()
     private var gameBassState = 0f
+    private var gameTransientFast = 0f
+    private var gameTransientSlow = 0f
 
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -347,11 +349,6 @@ class AudioControllerImpl private constructor(
             }
         }
 
-        scope.launch(Dispatchers.IO) {
-            routeHidMutex.withLock {
-                runAudioRoutingHid()
-            }
-        }
     }
 
     override fun setAudioGain(gain: Float) {
@@ -367,12 +364,6 @@ class AudioControllerImpl private constructor(
         }
 
         volumeProvider?.currentVolume = step
-
-        scope.launch(Dispatchers.IO) {
-            routeHidMutex.withLock {
-                runAudioRoutingHid()
-            }
-        }
     }
 
     override fun setChannelEnabled(channel: Int, enabled: Boolean) {
@@ -413,7 +404,7 @@ class AudioControllerImpl private constructor(
     }
 
     override fun setGameMode(enabled: Boolean) {
-        gameBassState = 0f
+        resetGameModeShaper()
         _uiState.update { current ->
             if (enabled) {
                 current.copy(
@@ -422,7 +413,9 @@ class AudioControllerImpl private constructor(
                     routeCh2 = false,
                     routeCh3 = true,
                     routeCh4 = true,
-                    logText = "Game mode: haptic bass boost"
+                    mutePhoneWhileStreaming = false,
+                    hardwareVolumeButtonsControlController = false,
+                    logText = "Game mode: haptic extract"
                 )
             } else {
                 current.copy(
@@ -437,8 +430,11 @@ class AudioControllerImpl private constructor(
         }
 
         if (_uiState.value.isStreaming) {
-            NativeAudioBridge.nativeIsoSetQueueLimit(if (enabled) 1 else 20)
+            stopPhoneMuteForStreaming()
+            NativeAudioBridge.nativeIsoSetQueueLimit(if (enabled) 3 else 20)
         }
+
+        updateMediaSession()
 
         scope.launch(Dispatchers.IO) {
             routeHidMutex.withLock {
@@ -447,7 +443,27 @@ class AudioControllerImpl private constructor(
         }
     }
 
+    override fun setGameModeAdaptiveStrength(enabled: Boolean) {
+        resetGameModeShaper()
+        _uiState.update {
+            it.copy(gameModeAdaptiveStrength = enabled)
+        }
+    }
+
+    override fun setGameModePreciseReaction(enabled: Boolean) {
+        resetGameModeShaper()
+        _uiState.update {
+            it.copy(gameModePreciseReaction = enabled)
+        }
+    }
+
     override fun setMutePhoneWhileStreaming(enabled: Boolean) {
+        if (_uiState.value.gameMode && enabled) {
+            _uiState.update { it.copy(mutePhoneWhileStreaming = false) }
+            stopPhoneMuteForStreaming()
+            return
+        }
+
         _uiState.update { it.copy(mutePhoneWhileStreaming = enabled) }
 
         if (enabled) {
@@ -460,6 +476,14 @@ class AudioControllerImpl private constructor(
     }
 
     override fun setHardwareVolumeButtonsControlController(enabled: Boolean) {
+        if (_uiState.value.gameMode && enabled) {
+            _uiState.update {
+                it.copy(hardwareVolumeButtonsControlController = false)
+            }
+            updateMediaSession()
+            return
+        }
+
         _uiState.update {
             it.copy(hardwareVolumeButtonsControlController = enabled)
         }
@@ -469,6 +493,7 @@ class AudioControllerImpl private constructor(
     override fun handleHardwareVolumeButton(direction: Int): Boolean {
         val state = _uiState.value
 
+        if (state.gameMode) return false
         if (!state.hardwareVolumeButtonsControlController) return false
 
         when {
@@ -505,6 +530,7 @@ class AudioControllerImpl private constructor(
         stopStreamingInternal(stopNative = true)
 
         val device = findDualSenseDevice() ?: return appContext.getString(R.string.log_no_usb_dualsense)
+        val gameMode = _uiState.value.gameMode
 
         if (!usbManager.hasPermission(device)) {
             requestPermission(device)
@@ -518,6 +544,7 @@ class AudioControllerImpl private constructor(
                 appendLine(if (jackMode) "JACK HID: ${runAudioRoutingHid()}" else "SPK HID: ${runAudioRoutingHid()}")
             }
         }
+
         releaseDualSenseHidHandle()
 
         SystemClock.sleep(120)
@@ -541,8 +568,8 @@ class AudioControllerImpl private constructor(
         }
 
         val startRc = try {
-            NativeAudioBridge.nativeIsoSetLowLatencyMode(_uiState.value.gameMode)
-            NativeAudioBridge.nativeIsoSetQueueLimit(if (_uiState.value.gameMode) 1 else 20)
+            NativeAudioBridge.nativeIsoSetLowLatencyMode(gameMode)
+            NativeAudioBridge.nativeIsoSetQueueLimit(if (gameMode) 4 else 20)
             NativeAudioBridge.nativeIsoStreamStart(
                 fd,
                 route.target.interfaceNumber,
@@ -629,7 +656,8 @@ class AudioControllerImpl private constructor(
             try { record.release() } catch (_: Throwable) {}
             try { projection.stop() } catch (_: Throwable) {}
             NativeAudioBridge.nativeIsoStreamStop()
-            closeAudioRoute(route)
+            closeAudioRoute(activeRoute)
+            activeRoute = null
             stopPhoneMuteForStreaming()
             _uiState.update { it.copy(isStreaming = false) }
             appContext.getString(R.string.log_stream_start_error, t.message ?: "")
@@ -647,8 +675,12 @@ class AudioControllerImpl private constructor(
                 }
             )
 
+            if (_uiState.value.gameMode) {
+                resetGameModeShaper()
+            }
+
             val payloadSize = 384
-            val packetsPerUrb = if (_uiState.value.gameMode) 4 else 32
+            val packetsPerUrb = if (_uiState.value.gameMode) 6 else 32
             val chunkBytes = payloadSize * packetsPerUrb
             val framesPerChunk = chunkBytes / OUTPUT_FRAME_BYTES
             val inputShortsPerChunk = framesPerChunk * INPUT_CHANNELS
@@ -774,10 +806,10 @@ class AudioControllerImpl private constructor(
                 writeShortLe(output, outputIndex, 0)
                 outputIndex += 2
 
-                writeShortLe(output, outputIndex, haptic)
+                writeShortLe(output, outputIndex, if (ch3Enabled) haptic else 0)
                 outputIndex += 2
 
-                writeShortLe(output, outputIndex, haptic)
+                writeShortLe(output, outputIndex, if (ch4Enabled) haptic else 0)
                 outputIndex += 2
             } else if (jackMode) {
                 writeShortLe(output, outputIndex, ampLeft)
@@ -808,13 +840,46 @@ class AudioControllerImpl private constructor(
     }
 
     private fun shapeGameModeHapticSample(monoSample: Int): Short {
-        gameBassState += (monoSample - gameBassState) * 0.20f
-        val driven = gameBassState * 10.5f
-        val softClipped = driven / (1f + abs(driven) / 18_000f)
+        val state = _uiState.value
+        val sample = monoSample.toFloat()
+
+        // A narrower low bed keeps engine/explosion body, while the fast-vs-slow
+        // envelope difference lifts impacts without turning the whole mix into mush.
+        gameBassState += (sample - gameBassState) * 0.055f
+
+        val lowMagnitude = abs(gameBassState)
+        gameTransientFast += (lowMagnitude - gameTransientFast) * 0.24f
+        gameTransientSlow += (lowMagnitude - gameTransientSlow) * 0.022f
+
+        val transient = (gameTransientFast - gameTransientSlow).coerceAtLeast(0f)
+        val adaptiveAmount = if (state.gameModeAdaptiveStrength) {
+            (lowMagnitude / 9_000f).coerceIn(0.05f, 1.15f)
+        } else {
+            1f
+        }
+        val preciseReactionAmount = if (state.gameModePreciseReaction) 1.15f else 0.32f
+
+        val gatedLow = when {
+            lowMagnitude > 2600f -> gameBassState * 0.62f * adaptiveAmount
+            transient > 850f -> gameBassState * 0.34f * adaptiveAmount
+            else -> gameBassState * 0.03f * adaptiveAmount
+        }
+
+        val punch = transient * preciseReactionAmount *
+            if (gameBassState >= 0f) 0.95f else -0.95f
+        val mixed = gatedLow + punch
+        val softClipped = mixed / (1f + abs(mixed) / 18_000f)
+
         return softClipped
             .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
             .toInt()
             .toShort()
+    }
+
+    private fun resetGameModeShaper() {
+        gameBassState = 0f
+        gameTransientFast = 0f
+        gameTransientSlow = 0f
     }
 
     private fun writeShortLe(buffer: ByteArray, offset: Int, value: Short) {
@@ -1158,6 +1223,7 @@ class AudioControllerImpl private constructor(
 
         return if (ok) "Music rumble OK" else "Music rumble Fail"
     }
+
 
     private fun findHidOutTarget(device: UsbDevice): HidOutTarget? {
         for (i in 0 until device.interfaceCount) {

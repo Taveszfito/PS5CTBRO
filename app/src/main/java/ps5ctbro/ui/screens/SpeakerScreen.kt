@@ -1,5 +1,10 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.outlined.Headset
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -79,6 +84,8 @@ fun SpeakerScreen(
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
     onGameModeChanged: (Boolean) -> Unit,
+    onGameModeAdaptiveStrengthChanged: (Boolean) -> Unit,
+    onGameModePreciseReactionChanged: (Boolean) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
     onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
     showLogs: Boolean,
@@ -111,11 +118,15 @@ fun SpeakerScreen(
             routeCh3 = uiState.routeCh3,
             routeCh4 = uiState.routeCh4,
             gameMode = uiState.gameMode,
+            gameModeAdaptiveStrength = uiState.gameModeAdaptiveStrength,
+            gameModePreciseReaction = uiState.gameModePreciseReaction,
             onRouteCh1Changed = onRouteCh1Changed,
             onRouteCh2Changed = onRouteCh2Changed,
             onRouteCh3Changed = onRouteCh3Changed,
             onRouteCh4Changed = onRouteCh4Changed,
             onGameModeChanged = onGameModeChanged,
+            onGameModeAdaptiveStrengthChanged = onGameModeAdaptiveStrengthChanged,
+            onGameModePreciseReactionChanged = onGameModePreciseReactionChanged,
             enabled = !isBtMode
         )
 
@@ -350,11 +361,15 @@ private fun ChannelRoutesCard(
     routeCh3: Boolean,
     routeCh4: Boolean,
     gameMode: Boolean,
+    gameModeAdaptiveStrength: Boolean,
+    gameModePreciseReaction: Boolean,
     onRouteCh1Changed: (Boolean) -> Unit,
     onRouteCh2Changed: (Boolean) -> Unit,
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
     onGameModeChanged: (Boolean) -> Unit,
+    onGameModeAdaptiveStrengthChanged: (Boolean) -> Unit,
+    onGameModePreciseReactionChanged: (Boolean) -> Unit,
     enabled: Boolean
 ) {
     SectionCard(
@@ -379,7 +394,7 @@ private fun ChannelRoutesCard(
                     text = stringResource(R.string.label_channel_abbr),
                     checked = routeCh1,
                     onCheckedChange = onRouteCh1Changed,
-                    enabled = !gameMode
+                    enabled = enabled && !gameMode
                 )
                 ChannelTile(
                     modifier = Modifier.weight(1f),
@@ -387,7 +402,7 @@ private fun ChannelRoutesCard(
                     text = stringResource(R.string.label_speaker_abbr),
                     checked = routeCh2,
                     onCheckedChange = onRouteCh2Changed,
-                    enabled = !gameMode
+                    enabled = enabled && !gameMode
                 )
                 ChannelTile(
                     modifier = Modifier.weight(1f),
@@ -442,6 +457,39 @@ private fun ChannelRoutesCard(
                         uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
+            }
+
+            AnimatedVisibility(
+                visible = gameMode,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFF132743))
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BottomToggleCard(
+                        icon = Icons.Outlined.Waves,
+                        line1 = stringResource(R.string.label_game_mode_adaptive_strength),
+                        line2 = stringResource(R.string.label_game_mode_adaptive_strength_desc),
+                        checked = gameModeAdaptiveStrength,
+                        onCheckedChange = onGameModeAdaptiveStrengthChanged,
+                        enabled = enabled
+                    )
+
+                    BottomToggleCard(
+                        icon = Icons.Outlined.Tune,
+                        line1 = stringResource(R.string.label_game_mode_precise_reaction),
+                        line2 = stringResource(R.string.label_game_mode_precise_reaction_desc),
+                        checked = gameModePreciseReaction,
+                        onCheckedChange = onGameModePreciseReactionChanged,
+                        enabled = enabled
+                    )
+                }
             }
         }
     }

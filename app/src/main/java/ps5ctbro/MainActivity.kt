@@ -73,7 +73,6 @@ class MainActivity : AppCompatActivity() {
             if (result.resultCode == RESULT_OK && result.data != null) {
                 startStreamingInService(result.resultCode, result.data!!)
             } else {
-                stopService(Intent(this, MediaProjectionForegroundService::class.java))
                 viewModel.onCapturePermissionDenied()
             }
         }
@@ -149,6 +148,8 @@ class MainActivity : AppCompatActivity() {
                         viewModel.setChannelEnabled(channel = 4, enabled = enabled)
                     },
                     onGameModeChanged = viewModel::setGameMode,
+                    onGameModeAdaptiveStrengthChanged = viewModel::setGameModeAdaptiveStrength,
+                    onGameModePreciseReactionChanged = viewModel::setGameModePreciseReaction,
                     onMutePhoneWhileStreamingChanged = viewModel::setMutePhoneWhileStreaming,
                     onHardwareVolumeButtonsControlControllerChanged =
                         viewModel::setHardwareVolumeButtonsControlController,
@@ -301,17 +302,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchCapturePermission() {
-        startMediaProjectionService()
         capturePermissionLauncher.launch(viewModel.createScreenCaptureIntent())
-    }
-
-    private fun startMediaProjectionService() {
-        val serviceIntent = Intent(this, MediaProjectionForegroundService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ContextCompat.startForegroundService(this, serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
     }
 
     private fun startStreamingInService(resultCode: Int, data: Intent) {
@@ -320,7 +311,11 @@ class MainActivity : AppCompatActivity() {
             putExtra(MediaProjectionForegroundService.EXTRA_RESULT_CODE, resultCode)
             putExtra(MediaProjectionForegroundService.EXTRA_DATA, data)
         }
-        startService(serviceIntent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
     }
 
     // Removed manual volume key interception to allow system to show the custom MediaSession volume slider

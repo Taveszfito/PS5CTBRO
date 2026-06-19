@@ -264,6 +264,10 @@
     <string name="label_left_vib_abbr">Bal rezgő</string>
     <string name="label_right_vib_abbr">Jobb rezgő</string>
     <string name="label_game_mode">Game mód basszus haptika</string>
+    <string name="label_game_mode_adaptive_strength">Adaptív rezgés erősség</string>
+    <string name="label_game_mode_adaptive_strength_desc">Halkabb jeleneteknél visszafogja a statikus rezgést</string>
+    <string name="label_game_mode_precise_reaction">Pontosabb reakció</string>
+    <string name="label_game_mode_precise_reaction_desc">Erősebben reagál a váltásokra, ütésekre és rövid megszakadásokra</string>
     <string name="label_mute_abbr">Némítás</string>
     <string name="label_phone_abbr">telefon</string>
     <string name="label_hw_vol_abbr">HW hangerő</string>

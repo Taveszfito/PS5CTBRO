@@ -60,6 +60,14 @@ class SpeakerViewModel(application: Application) : AndroidViewModel(application)
         controller.setGameMode(enabled)
     }
 
+    fun setGameModeAdaptiveStrength(enabled: Boolean) {
+        controller.setGameModeAdaptiveStrength(enabled)
+    }
+
+    fun setGameModePreciseReaction(enabled: Boolean) {
+        controller.setGameModePreciseReaction(enabled)
+    }
+
     fun setMutePhoneWhileStreaming(enabled: Boolean) {
         controller.setMutePhoneWhileStreaming(enabled)
     }

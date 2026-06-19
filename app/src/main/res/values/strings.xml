@@ -160,6 +160,10 @@
     <string name="label_left_vib_abbr">Left Vib</string>
     <string name="label_right_vib_abbr">Right Vib</string>
     <string name="label_game_mode">Game mode bass haptics</string>
+    <string name="label_game_mode_adaptive_strength">Adaptive vibration strength</string>
+    <string name="label_game_mode_adaptive_strength_desc">Reduce static rumble in quieter scenes</string>
+    <string name="label_game_mode_precise_reaction">Precise reaction</string>
+    <string name="label_game_mode_precise_reaction_desc">React harder to shifts, hits, and brief breaks</string>
     <string name="label_mute_abbr">Mute</string>
     <string name="label_phone_abbr">phone</string>
     <string name="label_hw_vol_abbr">HW vol.</string>

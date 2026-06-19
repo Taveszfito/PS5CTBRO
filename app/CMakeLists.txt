@@ -8,6 +8,12 @@ add_library(
         src/main/cpp/native-lib.cpp
 )
 
+target_link_options(
+        ps5audio
+        PRIVATE
+        "-Wl,-z,max-page-size=16384"
+)
+
 find_library(
         log-lib
         log

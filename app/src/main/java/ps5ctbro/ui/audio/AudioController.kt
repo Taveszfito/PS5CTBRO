@@ -20,6 +20,8 @@ interface AudioController {
     fun setAudioGain(gain: Float)
     fun setChannelEnabled(channel: Int, enabled: Boolean)
     fun setGameMode(enabled: Boolean)
+    fun setGameModeAdaptiveStrength(enabled: Boolean)
+    fun setGameModePreciseReaction(enabled: Boolean)
 
     fun setMutePhoneWhileStreaming(enabled: Boolean)
     fun setHardwareVolumeButtonsControlController(enabled: Boolean)

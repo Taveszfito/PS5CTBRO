@@ -239,9 +239,9 @@ Java_com_DueBoysenberry1226_ps5ctbro_audio_NativeAudioBridge_nativeIsoSetLowLate
     }
 
     if (enabled) {
-        g_packetsPerUrb = 4;
-        g_numUrbs = 2;
-        g_pcmQueueLimit = 1;
+        g_packetsPerUrb = 6;
+        g_numUrbs = 3;
+        g_pcmQueueLimit = 3;
     } else {
         g_packetsPerUrb = PACKETS_PER_URB;
         g_numUrbs = NUM_URBS;

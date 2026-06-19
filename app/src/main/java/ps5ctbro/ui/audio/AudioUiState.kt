@@ -33,6 +33,8 @@ data class AudioUiState(
     val routeCh3: Boolean = false,
     val routeCh4: Boolean = false,
     val gameMode: Boolean = false,
+    val gameModeAdaptiveStrength: Boolean = true,
+    val gameModePreciseReaction: Boolean = true,
     val mutePhoneWhileStreaming: Boolean = true,
     val hardwareVolumeButtonsControlController: Boolean = true,
     val sessionToken: MediaSession.Token? = null,

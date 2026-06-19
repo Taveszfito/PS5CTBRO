@@ -37,7 +37,10 @@ class MediaProjectionForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_text_preparing)))
+        startServiceForeground(
+            text = getString(R.string.notification_text_preparing),
+            includeProjectionType = false
+        )
         
         // Listen to UI state changes to update notification with MediaSession token if needed
         val controller = AudioControllerImpl.getInstance(this)
@@ -67,7 +70,7 @@ class MediaProjectionForegroundService : Service() {
             }
         }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startStreaming(resultCode: Int, data: Intent) {
@@ -82,25 +85,7 @@ class MediaProjectionForegroundService : Service() {
         val controller = AudioControllerImpl.getInstance(this)
         val isStreaming = controller.uiState.value.isStreaming
         val text = if (isStreaming) getString(R.string.notification_text_active) else getString(R.string.notification_text_preparing)
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isStreaming) {
-            val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            }
-            
-            startForeground(
-                NOTIFICATION_ID,
-                buildNotification(text),
-                serviceType
-            )
-        } else {
-            startForeground(
-                NOTIFICATION_ID,
-                buildNotification(text)
-            )
-        }
+        startServiceForeground(text = text, includeProjectionType = isStreaming)
     }
 
     private fun stopStreaming() {
@@ -151,5 +136,20 @@ class MediaProjectionForegroundService : Service() {
         )
 
         manager.createNotificationChannel(channel)
+    }
+
+    private fun startServiceForeground(text: String, includeProjectionType: Boolean) {
+        val notification = buildNotification(text)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && includeProjectionType) {
+            val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            }
+            startForeground(NOTIFICATION_ID, notification, serviceType)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 }
