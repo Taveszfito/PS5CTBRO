@@ -790,7 +790,9 @@ class AudioControllerImpl private constructor(
             }
 
             startNewStreamingPipeline(record)
-            startSpeakerKeepAlive()
+            if (!gameMode) {
+                startSpeakerKeepAlive()
+            }
 
             if (_uiState.value.mutePhoneWhileStreaming) {
                 schedulePhoneMuteForStreaming()
@@ -1529,7 +1531,7 @@ class AudioControllerImpl private constructor(
         try {
             val state = _uiState.value
             if (state.gameMode) {
-                val rumbleWakeLog = if (includeRumbleWake) runAudioRumbleWakeHid() else null
+                val rumbleWakeLog = if (includeRumbleWake) runGameModeAudioRumbleWakeHid() else null
 
                 return listOfNotNull("GAME haptic route", rumbleWakeLog)
                     .joinToString(" / ")
@@ -1557,6 +1559,25 @@ class AudioControllerImpl private constructor(
 
             PhysicalAudioRoute.JACK -> runJackRoutingHid()
         }
+    }
+
+    private fun runGameModeAudioRumbleWakeHid(): String {
+        val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
+        val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+
+        report[0] = DS_OUTPUT_REPORT_USB.toByte()
+        report[2] = 0x15.toByte()
+        report[39] = 0x03.toByte()
+        report[42] = 0x02.toByte()
+        report[43] = 0x00.toByte()
+
+        val ok = controller.sendRaw(report)
+
+        if (!ok && !_uiState.value.isStreaming) {
+            setControllerConnected(false)
+        }
+
+        return if (ok) "GAME AUDIO RUMBLE WAKE OK" else "GAME AUDIO RUMBLE WAKE Fail"
     }
 
     private fun runAudioRumbleWakeHid(): String {
@@ -1886,8 +1907,13 @@ class AudioControllerImpl private constructor(
             return null
         }
 
-        val opened = hidManager.refreshConnection()
-        val controller = if (opened) DualSenseUsbController.shared(appContext) else null
+        val controller =
+            if (_uiState.value.gameMode) {
+                DualSenseUsbController.open(usbManager, device)
+            } else {
+                val opened = hidManager.refreshConnection()
+                if (opened) DualSenseUsbController.shared(appContext) else null
+            }
         dualSense = controller
 
         val success = controller != null
