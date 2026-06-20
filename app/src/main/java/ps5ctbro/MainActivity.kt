@@ -30,6 +30,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.speaker.SpeakerViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.vibrate.VibrationViewModel
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.DueBoysenberry1226.ps5ctbro.audio.GameModeTuning
 import com.DueBoysenberry1226.ps5ctbro.ui.theme.PS5CTBroTheme
 
 class MainActivity : AppCompatActivity() {
@@ -148,8 +149,15 @@ class MainActivity : AppCompatActivity() {
                         viewModel.setChannelEnabled(channel = 4, enabled = enabled)
                     },
                     onGameModeChanged = viewModel::setGameMode,
+                    onGameModeTuningChanged = viewModel::updateGameModeTuning,
+                    onResetGameModeTuning = viewModel::resetGameModeTuning,
                     onGameModeAdaptiveStrengthChanged = viewModel::setGameModeAdaptiveStrength,
                     onGameModePreciseReactionChanged = viewModel::setGameModePreciseReaction,
+                    onSaveGameModePreset = viewModel::saveGameModePreset,
+                    onDeleteGameModePreset = viewModel::deleteGameModePreset,
+                    onApplyGameModePreset = viewModel::applyGameModePreset,
+                    onImportGameModePresetFromClipboard = viewModel::importGameModePresetFromClipboard,
+                    onCopyGameModePresetToClipboard = viewModel::copyGameModePresetToClipboard,
                     onMutePhoneWhileStreamingChanged = viewModel::setMutePhoneWhileStreaming,
                     onHardwareVolumeButtonsControlControllerChanged =
                         viewModel::setHardwareVolumeButtonsControlController,

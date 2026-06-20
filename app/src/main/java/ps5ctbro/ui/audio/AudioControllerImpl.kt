@@ -3,7 +3,12 @@ package com.DueBoysenberry1226.ps5ctbro.audio
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
 import kotlinx.coroutines.isActive
+import android.app.AppOpsManager
 import android.app.PendingIntent
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -29,7 +34,9 @@ import android.media.session.PlaybackState
 import android.os.Build
 import android.os.Process
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +51,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
 import kotlin.math.abs
 
 class AudioControllerImpl private constructor(
@@ -81,6 +91,8 @@ class AudioControllerImpl private constructor(
         private const val OUTPUT_FRAME_BYTES = OUTPUT_CHANNELS * BYTES_PER_SAMPLE
 
         private const val MAX_CONTROLLER_VOLUME = 0xFF
+        private const val PREFERENCES_NAME = "settings"
+        private const val KEY_GAME_MODE_PRESETS = "game_mode_presets"
     }
 
     private data class ParsedControllerDetails(
@@ -215,10 +227,20 @@ class AudioControllerImpl private constructor(
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val usageStatsManager =
+        appContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+    private val appOpsManager = appContext.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+    private val clipboardManager =
+        appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val _uiState = MutableStateFlow(AudioUiState())
+    private val _uiState = MutableStateFlow(
+        AudioUiState(
+            gameModePresets = loadGameModePresets()
+        )
+    )
     override val uiState: StateFlow<AudioUiState> = _uiState
     val audioLevelFlow = MutableStateFlow(0f)
 
@@ -233,10 +255,14 @@ class AudioControllerImpl private constructor(
     private var speakerKeepAliveJob: Job? = null
     private var phoneMuteDelayJob: Job? = null
     private var phoneMuteKeepAliveJob: Job? = null
+    private var gamePresetAutoDetectJob: Job? = null
     private var receiverRegistered = false
 
     private var savedMusicVolumeBeforeMute: Int? = null
     private var phoneMutedByApp = false
+    private var gamePresetToast: Toast? = null
+    private var lastForegroundPresetPackage: String? = null
+    private var usageAccessPromptShown = false
 
     private var mediaSession: MediaSession? = null
     private var volumeProvider: VolumeProvider? = null
@@ -415,7 +441,7 @@ class AudioControllerImpl private constructor(
                     routeCh4 = true,
                     mutePhoneWhileStreaming = false,
                     hardwareVolumeButtonsControlController = false,
-                    logText = "Game mode: haptic extract"
+                    logText = appContext.getString(R.string.log_game_mode_haptic_extract)
                 )
             } else {
                 current.copy(
@@ -424,7 +450,7 @@ class AudioControllerImpl private constructor(
                     routeCh2 = true,
                     routeCh3 = false,
                     routeCh4 = false,
-                    logText = "Game mode off"
+                    logText = appContext.getString(R.string.log_game_mode_off)
                 )
             }
         }
@@ -435,6 +461,7 @@ class AudioControllerImpl private constructor(
         }
 
         updateMediaSession()
+        updateGamePresetAutoDetect()
 
         scope.launch(Dispatchers.IO) {
             routeHidMutex.withLock {
@@ -443,18 +470,126 @@ class AudioControllerImpl private constructor(
         }
     }
 
-    override fun setGameModeAdaptiveStrength(enabled: Boolean) {
+    override fun updateGameModeTuning(tuning: GameModeTuning) {
         resetGameModeShaper()
-        _uiState.update {
-            it.copy(gameModeAdaptiveStrength = enabled)
+        _uiState.update { current ->
+            current.copy(
+                gameModeTuning = tuning,
+                activeGamePresetId = findMatchingGameModePresetId(tuning)
+            )
         }
     }
 
+    override fun resetGameModeTuning() {
+        updateGameModeTuning(GameModeTuning.DEFAULT)
+    }
+
+    override fun setGameModeAdaptiveStrength(enabled: Boolean) {
+        val tuning = _uiState.value.gameModeTuning.copy(adaptiveStrengthEnabled = enabled)
+        updateGameModeTuning(tuning)
+    }
+
     override fun setGameModePreciseReaction(enabled: Boolean) {
-        resetGameModeShaper()
-        _uiState.update {
-            it.copy(gameModePreciseReaction = enabled)
+        val tuning = _uiState.value.gameModeTuning.copy(preciseReactionEnabled = enabled)
+        updateGameModeTuning(tuning)
+    }
+
+    override fun saveGameModePreset(
+        presetId: String?,
+        appPackageName: String,
+        appLabel: String,
+        tuning: GameModeTuning
+    ) {
+        val cleanPackage = appPackageName.trim()
+        val cleanLabel = appLabel.trim()
+
+        if (cleanPackage.isBlank() || cleanLabel.isBlank()) {
+            setLog(appContext.getString(R.string.log_game_preset_needs_app_target))
+            return
         }
+
+        val existingId = presetId?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+        val preset = GameModePreset(
+            id = existingId,
+            appPackageName = cleanPackage,
+            appLabel = cleanLabel,
+            tuning = tuning
+        )
+
+        _uiState.update { current ->
+            val updated = current.gameModePresets
+                .filterNot { it.id == existingId } + preset
+            current.copy(
+                gameModeTuning = tuning,
+                gameModePresets = updated.sortedBy { it.appLabel.lowercase() },
+                activeGamePresetId = existingId
+            )
+        }
+
+        saveGameModePresets(_uiState.value.gameModePresets)
+        updateGamePresetAutoDetect()
+        setLog(appContext.getString(R.string.log_game_preset_saved, cleanLabel))
+    }
+
+    override fun deleteGameModePreset(id: String) {
+        val current = _uiState.value
+        val preset = current.gameModePresets.firstOrNull { it.id == id } ?: return
+
+        _uiState.update {
+            it.copy(
+                gameModePresets = it.gameModePresets.filterNot { preset -> preset.id == id },
+                activeGamePresetId = if (it.activeGamePresetId == id) null else it.activeGamePresetId
+            )
+        }
+        saveGameModePresets(_uiState.value.gameModePresets)
+        updateGamePresetAutoDetect()
+        setLog(appContext.getString(R.string.log_game_preset_deleted, preset.appLabel))
+    }
+
+    override fun applyGameModePreset(id: String) {
+        val preset = _uiState.value.gameModePresets.firstOrNull { it.id == id } ?: return
+        updateGameModeTuning(preset.tuning)
+        _uiState.update {
+            it.copy(activeGamePresetId = id)
+        }
+        setLog(appContext.getString(R.string.log_game_preset_applied, preset.appLabel))
+    }
+
+    override fun importGameModePresetFromClipboard() {
+        val text = clipboardManager.primaryClip
+            ?.takeIf { it.itemCount > 0 }
+            ?.getItemAt(0)
+            ?.coerceToText(appContext)
+            ?.toString()
+            ?.trim()
+            .orEmpty()
+
+        if (text.isBlank()) {
+            setLog(appContext.getString(R.string.log_clipboard_empty))
+            return
+        }
+
+        val preset = parseGameModePreset(text)
+        if (preset == null) {
+            setLog(appContext.getString(R.string.log_invalid_game_preset_format))
+            return
+        }
+
+        saveGameModePreset(
+            presetId = null,
+            appPackageName = preset.appPackageName,
+            appLabel = preset.appLabel,
+            tuning = preset.tuning
+        )
+    }
+
+    override fun copyGameModePresetToClipboard(id: String) {
+        val preset = _uiState.value.gameModePresets.firstOrNull { it.id == id } ?: return
+        val export = exportGameModePreset(preset)
+        clipboardManager.setPrimaryClip(
+            ClipData.newPlainText("game_preset", export)
+        )
+        setLog(appContext.getString(R.string.log_game_preset_copied, preset.appLabel))
     }
 
     override fun setMutePhoneWhileStreaming(enabled: Boolean) {
@@ -522,6 +657,7 @@ class AudioControllerImpl private constructor(
     override fun release() {
         stopStreamingInternal()
         stopPhoneMuteForStreaming()
+        stopGamePresetAutoDetect()
         closeController()
         unregisterUsbReceiver()
     }
@@ -649,6 +785,7 @@ class AudioControllerImpl private constructor(
             }
 
             updateMediaSession()
+            updateGamePresetAutoDetect()
 
             appContext.getString(R.string.log_stream_started)
         } catch (t: Throwable) {
@@ -660,6 +797,7 @@ class AudioControllerImpl private constructor(
             activeRoute = null
             stopPhoneMuteForStreaming()
             _uiState.update { it.copy(isStreaming = false) }
+            updateGamePresetAutoDetect()
             appContext.getString(R.string.log_stream_start_error, t.message ?: "")
         }
     }
@@ -711,6 +849,7 @@ class AudioControllerImpl private constructor(
 
     private fun stopStreamingInternal(stopNative: Boolean = true) {
         stopSpeakerKeepAlive()
+        stopGamePresetAutoDetect()
         NativeAudioBridge.nativeIsoSetQueueLimit(20)
 
         captureJob?.cancel()
@@ -751,6 +890,7 @@ class AudioControllerImpl private constructor(
         }
 
         updateMediaSession()
+        updateGamePresetAutoDetect()
     }
 
     private fun readExactly(record: AudioRecord, buffer: ShortArray, targetShortCount: Int): Int {
@@ -840,35 +980,36 @@ class AudioControllerImpl private constructor(
     }
 
     private fun shapeGameModeHapticSample(monoSample: Int): Short {
-        val state = _uiState.value
+        val tuning = _uiState.value.gameModeTuning
         val sample = monoSample.toFloat()
 
         // A narrower low bed keeps engine/explosion body, while the fast-vs-slow
         // envelope difference lifts impacts without turning the whole mix into mush.
-        gameBassState += (sample - gameBassState) * 0.055f
+        gameBassState += (sample - gameBassState) * tuning.bassFollow
 
         val lowMagnitude = abs(gameBassState)
-        gameTransientFast += (lowMagnitude - gameTransientFast) * 0.24f
-        gameTransientSlow += (lowMagnitude - gameTransientSlow) * 0.022f
+        gameTransientFast += (lowMagnitude - gameTransientFast) * tuning.transientFastFollow
+        gameTransientSlow += (lowMagnitude - gameTransientSlow) * tuning.transientSlowFollow
 
         val transient = (gameTransientFast - gameTransientSlow).coerceAtLeast(0f)
-        val adaptiveAmount = if (state.gameModeAdaptiveStrength) {
-            (lowMagnitude / 9_000f).coerceIn(0.05f, 1.15f)
+        val adaptiveAmount = if (tuning.adaptiveStrengthEnabled) {
+            (lowMagnitude / 9_000f).coerceIn(tuning.adaptiveFloor, tuning.adaptiveCeiling)
         } else {
             1f
         }
-        val preciseReactionAmount = if (state.gameModePreciseReaction) 1.15f else 0.32f
+        val preciseReactionAmount =
+            if (tuning.preciseReactionEnabled) tuning.precisePunch else tuning.softPunch
 
         val gatedLow = when {
-            lowMagnitude > 2600f -> gameBassState * 0.62f * adaptiveAmount
-            transient > 850f -> gameBassState * 0.34f * adaptiveAmount
-            else -> gameBassState * 0.03f * adaptiveAmount
+            lowMagnitude > tuning.lowThreshold -> gameBassState * tuning.strongLowMix * adaptiveAmount
+            transient > tuning.transientThreshold -> gameBassState * tuning.transientLowMix * adaptiveAmount
+            else -> gameBassState * tuning.quietLowMix * adaptiveAmount
         }
 
         val punch = transient * preciseReactionAmount *
-            if (gameBassState >= 0f) 0.95f else -0.95f
+            if (gameBassState >= 0f) tuning.punchPolarityScale else -tuning.punchPolarityScale
         val mixed = gatedLow + punch
-        val softClipped = mixed / (1f + abs(mixed) / 18_000f)
+        val softClipped = mixed / (1f + abs(mixed) / tuning.softClipDenominator.coerceAtLeast(1f))
 
         return softClipped
             .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
@@ -880,6 +1021,315 @@ class AudioControllerImpl private constructor(
         gameBassState = 0f
         gameTransientFast = 0f
         gameTransientSlow = 0f
+    }
+
+    private fun updateGamePresetAutoDetect() {
+        val state = _uiState.value
+        val shouldRun = state.gameMode && state.isStreaming && state.gameModePresets.isNotEmpty()
+
+        if (!shouldRun) {
+            stopGamePresetAutoDetect()
+            usageAccessPromptShown = false
+            lastForegroundPresetPackage = null
+            return
+        }
+
+        if (!hasUsageAccessPermission()) {
+            stopGamePresetAutoDetect()
+            if (!usageAccessPromptShown) {
+                usageAccessPromptShown = true
+                showGamePresetToast(appContext.getString(R.string.toast_allow_usage_access))
+                runCatching {
+                    appContext.startActivity(
+                        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                    )
+                }
+            }
+            return
+        }
+
+        usageAccessPromptShown = false
+        startGamePresetAutoDetect()
+    }
+
+    private fun startGamePresetAutoDetect() {
+        if (gamePresetAutoDetectJob?.isActive == true) return
+
+        gamePresetAutoDetectJob = scope.launch(Dispatchers.IO) {
+            while (isActive) {
+                val packageName = currentForegroundPackage()
+                val matchingPreset = _uiState.value.gameModePresets.firstOrNull {
+                    it.appPackageName == packageName
+                }
+
+                if (
+                    packageName != null &&
+                    packageName != appContext.packageName &&
+                    matchingPreset != null &&
+                    lastForegroundPresetPackage != packageName
+                ) {
+                    lastForegroundPresetPackage = packageName
+                    withContext(Dispatchers.Main.immediate) {
+                        updateGameModeTuning(matchingPreset.tuning)
+                        _uiState.update { current ->
+                            current.copy(activeGamePresetId = matchingPreset.id)
+                        }
+                        showGamePresetToast(
+                            appContext.getString(R.string.toast_game_preset_active, matchingPreset.appLabel)
+                        )
+                        setLog(
+                            appContext.getString(R.string.log_game_preset_auto_active, matchingPreset.appLabel)
+                        )
+                    }
+                } else if (packageName != null && matchingPreset == null) {
+                    lastForegroundPresetPackage = packageName
+                }
+
+                kotlinx.coroutines.delay(1200)
+            }
+        }
+    }
+
+    private fun stopGamePresetAutoDetect() {
+        gamePresetAutoDetectJob?.cancel()
+        gamePresetAutoDetectJob = null
+    }
+
+    private fun hasUsageAccessPermission(): Boolean {
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOpsManager.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                appContext.packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOpsManager.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                appContext.packageName
+            )
+        }
+
+        if (mode != AppOpsManager.MODE_ALLOWED) {
+            return false
+        }
+
+        val now = System.currentTimeMillis()
+        val stats = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            now - 60_000L,
+            now
+        )
+        return !stats.isNullOrEmpty()
+    }
+
+    private fun currentForegroundPackage(): String? {
+        val end = System.currentTimeMillis()
+        val begin = end - 10_000L
+        val event = UsageEvents.Event()
+        val events = usageStatsManager.queryEvents(begin, end)
+
+        var latestPackage: String? = null
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                latestPackage = event.packageName
+            }
+        }
+
+        if (!latestPackage.isNullOrBlank()) {
+            return latestPackage
+        }
+
+        return usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            begin,
+            end
+        )?.maxByOrNull { it.lastTimeUsed }?.packageName
+    }
+
+    private fun showGamePresetToast(message: String) {
+        scope.launch(Dispatchers.Main.immediate) {
+            gamePresetToast?.cancel()
+            gamePresetToast = Toast.makeText(appContext, message, Toast.LENGTH_SHORT).also {
+                it.show()
+            }
+        }
+    }
+
+    private fun findMatchingGameModePresetId(tuning: GameModeTuning): String? {
+        return _uiState.value.gameModePresets.firstOrNull { it.tuning == tuning }?.id
+    }
+
+    private fun loadGameModePresets(): List<GameModePreset> {
+        val raw = preferences.getString(KEY_GAME_MODE_PRESETS, null) ?: return emptyList()
+        return try {
+            val array = JSONArray(raw)
+            buildList {
+                for (i in 0 until array.length()) {
+                    val item = array.getJSONObject(i)
+                    val tuningJson = item.getJSONObject("tuning")
+                    add(
+                        GameModePreset(
+                            id = item.getString("id"),
+                            appPackageName = item.getString("appPackageName"),
+                            appLabel = item.getString("appLabel"),
+                            tuning = tuningJson.toGameModeTuning()
+                        )
+                    )
+                }
+            }.sortedBy { it.appLabel.lowercase() }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    private fun saveGameModePresets(presets: List<GameModePreset>) {
+        val array = JSONArray()
+        presets.forEach { preset ->
+            array.put(
+                JSONObject()
+                    .put("id", preset.id)
+                    .put("appPackageName", preset.appPackageName)
+                    .put("appLabel", preset.appLabel)
+                    .put("tuning", preset.tuning.toJson())
+            )
+        }
+        preferences.edit().putString(KEY_GAME_MODE_PRESETS, array.toString()).apply()
+    }
+
+    private fun GameModeTuning.toJson(): JSONObject {
+        return JSONObject()
+            .put("adaptiveStrengthEnabled", adaptiveStrengthEnabled)
+            .put("preciseReactionEnabled", preciseReactionEnabled)
+            .put("bassFollow", bassFollow.toDouble())
+            .put("transientFastFollow", transientFastFollow.toDouble())
+            .put("transientSlowFollow", transientSlowFollow.toDouble())
+            .put("adaptiveFloor", adaptiveFloor.toDouble())
+            .put("adaptiveCeiling", adaptiveCeiling.toDouble())
+            .put("lowThreshold", lowThreshold.toDouble())
+            .put("transientThreshold", transientThreshold.toDouble())
+            .put("strongLowMix", strongLowMix.toDouble())
+            .put("transientLowMix", transientLowMix.toDouble())
+            .put("quietLowMix", quietLowMix.toDouble())
+            .put("precisePunch", precisePunch.toDouble())
+            .put("softPunch", softPunch.toDouble())
+            .put("punchPolarityScale", punchPolarityScale.toDouble())
+            .put("softClipDenominator", softClipDenominator.toDouble())
+    }
+
+    private fun JSONObject.toGameModeTuning(): GameModeTuning {
+        return GameModeTuning(
+            adaptiveStrengthEnabled = optBoolean("adaptiveStrengthEnabled", true),
+            preciseReactionEnabled = optBoolean("preciseReactionEnabled", true),
+            bassFollow = optDouble("bassFollow", 0.055).toFloat(),
+            transientFastFollow = optDouble("transientFastFollow", 0.24).toFloat(),
+            transientSlowFollow = optDouble("transientSlowFollow", 0.022).toFloat(),
+            adaptiveFloor = optDouble("adaptiveFloor", 0.05).toFloat(),
+            adaptiveCeiling = optDouble("adaptiveCeiling", 1.15).toFloat(),
+            lowThreshold = optDouble("lowThreshold", 2600.0).toFloat(),
+            transientThreshold = optDouble("transientThreshold", 850.0).toFloat(),
+            strongLowMix = optDouble("strongLowMix", 0.62).toFloat(),
+            transientLowMix = optDouble("transientLowMix", 0.34).toFloat(),
+            quietLowMix = optDouble("quietLowMix", 0.03).toFloat(),
+            precisePunch = optDouble("precisePunch", 1.15).toFloat(),
+            softPunch = optDouble("softPunch", 0.32).toFloat(),
+            punchPolarityScale = optDouble("punchPolarityScale", 0.95).toFloat(),
+            softClipDenominator = optDouble("softClipDenominator", 18_000.0).toFloat()
+        )
+    }
+
+    private fun exportGameModePreset(preset: GameModePreset): String {
+        fun formatFloat(value: Float): String = "%.4f".format(value)
+
+        val tuning = preset.tuning
+        return buildString {
+            appendLine("mode = GAME_PRESET")
+            appendLine("app_package = ${preset.appPackageName}")
+            appendLine("app_label = ${preset.appLabel}")
+            appendLine("adaptive_strength = ${tuning.adaptiveStrengthEnabled}")
+            appendLine("precise_reaction = ${tuning.preciseReactionEnabled}")
+            appendLine("bass_follow = ${formatFloat(tuning.bassFollow)}")
+            appendLine("transient_fast_follow = ${formatFloat(tuning.transientFastFollow)}")
+            appendLine("transient_slow_follow = ${formatFloat(tuning.transientSlowFollow)}")
+            appendLine("adaptive_floor = ${formatFloat(tuning.adaptiveFloor)}")
+            appendLine("adaptive_ceiling = ${formatFloat(tuning.adaptiveCeiling)}")
+            appendLine("low_threshold = ${formatFloat(tuning.lowThreshold)}")
+            appendLine("transient_threshold = ${formatFloat(tuning.transientThreshold)}")
+            appendLine("strong_low_mix = ${formatFloat(tuning.strongLowMix)}")
+            appendLine("transient_low_mix = ${formatFloat(tuning.transientLowMix)}")
+            appendLine("quiet_low_mix = ${formatFloat(tuning.quietLowMix)}")
+            appendLine("precise_punch = ${formatFloat(tuning.precisePunch)}")
+            appendLine("soft_punch = ${formatFloat(tuning.softPunch)}")
+            appendLine("punch_scale = ${formatFloat(tuning.punchPolarityScale)}")
+            append("soft_clip = ${formatFloat(tuning.softClipDenominator)}")
+        }
+    }
+
+    private fun parseGameModePreset(raw: String): GameModePreset? {
+        val lines = raw
+            .replace("\r", "\n")
+            .split('\n')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        val values = mutableMapOf<String, String>()
+        for (line in lines) {
+            val separatorIndex = line.indexOf('=')
+            if (separatorIndex <= 0 || separatorIndex >= line.lastIndex) {
+                return null
+            }
+            val key = line.substring(0, separatorIndex).trim().lowercase()
+            val value = line.substring(separatorIndex + 1).trim()
+            values[key] = value
+        }
+
+        if (values["mode"] != "GAME_PRESET") return null
+
+        val appPackageName = values["app_package"].orEmpty()
+        val appLabel = values["app_label"].orEmpty()
+        if (appPackageName.isBlank() || appLabel.isBlank()) return null
+
+        fun bool(name: String, fallback: Boolean): Boolean {
+            return values[name]?.lowercase()?.let {
+                when (it) {
+                    "true" -> true
+                    "false" -> false
+                    else -> null
+                }
+            } ?: fallback
+        }
+
+        fun float(name: String, fallback: Float): Float {
+            return values[name]?.replace(',', '.')?.toFloatOrNull() ?: fallback
+        }
+
+        return GameModePreset(
+            id = UUID.randomUUID().toString(),
+            appPackageName = appPackageName,
+            appLabel = appLabel,
+            tuning = GameModeTuning(
+                adaptiveStrengthEnabled = bool("adaptive_strength", GameModeTuning.DEFAULT.adaptiveStrengthEnabled),
+                preciseReactionEnabled = bool("precise_reaction", GameModeTuning.DEFAULT.preciseReactionEnabled),
+                bassFollow = float("bass_follow", GameModeTuning.DEFAULT.bassFollow),
+                transientFastFollow = float("transient_fast_follow", GameModeTuning.DEFAULT.transientFastFollow),
+                transientSlowFollow = float("transient_slow_follow", GameModeTuning.DEFAULT.transientSlowFollow),
+                adaptiveFloor = float("adaptive_floor", GameModeTuning.DEFAULT.adaptiveFloor),
+                adaptiveCeiling = float("adaptive_ceiling", GameModeTuning.DEFAULT.adaptiveCeiling),
+                lowThreshold = float("low_threshold", GameModeTuning.DEFAULT.lowThreshold),
+                transientThreshold = float("transient_threshold", GameModeTuning.DEFAULT.transientThreshold),
+                strongLowMix = float("strong_low_mix", GameModeTuning.DEFAULT.strongLowMix),
+                transientLowMix = float("transient_low_mix", GameModeTuning.DEFAULT.transientLowMix),
+                quietLowMix = float("quiet_low_mix", GameModeTuning.DEFAULT.quietLowMix),
+                precisePunch = float("precise_punch", GameModeTuning.DEFAULT.precisePunch),
+                softPunch = float("soft_punch", GameModeTuning.DEFAULT.softPunch),
+                punchPolarityScale = float("punch_scale", GameModeTuning.DEFAULT.punchPolarityScale),
+                softClipDenominator = float("soft_clip", GameModeTuning.DEFAULT.softClipDenominator)
+            )
+        )
     }
 
     private fun writeShortLe(buffer: ByteArray, offset: Int, value: Short) {

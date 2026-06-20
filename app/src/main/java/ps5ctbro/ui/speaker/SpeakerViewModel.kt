@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioController
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
+import com.DueBoysenberry1226.ps5ctbro.audio.GameModeTuning
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -60,12 +61,50 @@ class SpeakerViewModel(application: Application) : AndroidViewModel(application)
         controller.setGameMode(enabled)
     }
 
+    fun updateGameModeTuning(tuning: GameModeTuning) {
+        controller.updateGameModeTuning(tuning)
+    }
+
+    fun resetGameModeTuning() {
+        controller.resetGameModeTuning()
+    }
+
     fun setGameModeAdaptiveStrength(enabled: Boolean) {
         controller.setGameModeAdaptiveStrength(enabled)
     }
 
     fun setGameModePreciseReaction(enabled: Boolean) {
         controller.setGameModePreciseReaction(enabled)
+    }
+
+    fun saveGameModePreset(
+        presetId: String?,
+        appPackageName: String,
+        appLabel: String,
+        tuning: GameModeTuning
+    ) {
+        controller.saveGameModePreset(
+            presetId = presetId,
+            appPackageName = appPackageName,
+            appLabel = appLabel,
+            tuning = tuning
+        )
+    }
+
+    fun deleteGameModePreset(id: String) {
+        controller.deleteGameModePreset(id)
+    }
+
+    fun applyGameModePreset(id: String) {
+        controller.applyGameModePreset(id)
+    }
+
+    fun importGameModePresetFromClipboard() {
+        controller.importGameModePresetFromClipboard()
+    }
+
+    fun copyGameModePresetToClipboard(id: String) {
+        controller.copyGameModePresetToClipboard(id)
     }
 
     fun setMutePhoneWhileStreaming(enabled: Boolean) {

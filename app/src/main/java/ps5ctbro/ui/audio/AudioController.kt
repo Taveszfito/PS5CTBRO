@@ -20,8 +20,20 @@ interface AudioController {
     fun setAudioGain(gain: Float)
     fun setChannelEnabled(channel: Int, enabled: Boolean)
     fun setGameMode(enabled: Boolean)
+    fun updateGameModeTuning(tuning: GameModeTuning)
+    fun resetGameModeTuning()
     fun setGameModeAdaptiveStrength(enabled: Boolean)
     fun setGameModePreciseReaction(enabled: Boolean)
+    fun saveGameModePreset(
+        presetId: String?,
+        appPackageName: String,
+        appLabel: String,
+        tuning: GameModeTuning
+    )
+    fun deleteGameModePreset(id: String)
+    fun applyGameModePreset(id: String)
+    fun importGameModePresetFromClipboard()
+    fun copyGameModePresetToClipboard(id: String)
 
     fun setMutePhoneWhileStreaming(enabled: Boolean)
     fun setHardwareVolumeButtonsControlController(enabled: Boolean)

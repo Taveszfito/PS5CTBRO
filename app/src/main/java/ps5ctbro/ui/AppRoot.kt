@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggerConfig
 import com.DueBoysenberry1226.ps5ctbro.adaptive.AdaptiveTriggersUiState
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioUiState
+import com.DueBoysenberry1226.ps5ctbro.audio.GameModeTuning
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppDrawerContent
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppTopBar
 import com.DueBoysenberry1226.ps5ctbro.ui.components.MiniInfoPill
@@ -83,8 +84,15 @@ fun AppRoot(
     onRouteCh3Changed: (Boolean) -> Unit,
     onRouteCh4Changed: (Boolean) -> Unit,
     onGameModeChanged: (Boolean) -> Unit,
+    onGameModeTuningChanged: (GameModeTuning) -> Unit,
+    onResetGameModeTuning: () -> Unit,
     onGameModeAdaptiveStrengthChanged: (Boolean) -> Unit,
     onGameModePreciseReactionChanged: (Boolean) -> Unit,
+    onSaveGameModePreset: (String?, String, String, GameModeTuning) -> Unit,
+    onDeleteGameModePreset: (String) -> Unit,
+    onApplyGameModePreset: (String) -> Unit,
+    onImportGameModePresetFromClipboard: () -> Unit,
+    onCopyGameModePresetToClipboard: (String) -> Unit,
     onMutePhoneWhileStreamingChanged: (Boolean) -> Unit,
     onHardwareVolumeButtonsControlControllerChanged: (Boolean) -> Unit,
     onSpeakerScreenVisible: () -> Unit,
@@ -269,8 +277,15 @@ fun AppRoot(
                                     onRouteCh3Changed = onRouteCh3Changed,
                                     onRouteCh4Changed = onRouteCh4Changed,
                                     onGameModeChanged = onGameModeChanged,
+                                    onGameModeTuningChanged = onGameModeTuningChanged,
+                                    onResetGameModeTuning = onResetGameModeTuning,
                                     onGameModeAdaptiveStrengthChanged = onGameModeAdaptiveStrengthChanged,
                                     onGameModePreciseReactionChanged = onGameModePreciseReactionChanged,
+                                    onSaveGameModePreset = onSaveGameModePreset,
+                                    onDeleteGameModePreset = onDeleteGameModePreset,
+                                    onApplyGameModePreset = onApplyGameModePreset,
+                                    onImportGameModePresetFromClipboard = onImportGameModePresetFromClipboard,
+                                    onCopyGameModePresetToClipboard = onCopyGameModePresetToClipboard,
                                     onMutePhoneWhileStreamingChanged = onMutePhoneWhileStreamingChanged,
                                     onHardwareVolumeButtonsControlControllerChanged = onHardwareVolumeButtonsControlControllerChanged,
                                     showLogs = showLogs
