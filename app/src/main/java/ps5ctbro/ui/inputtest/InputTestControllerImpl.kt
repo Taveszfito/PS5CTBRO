@@ -15,7 +15,14 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 import com.DueBoysenberry1226.ps5ctbro.audio.TouchpadPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -57,6 +64,8 @@ class InputTestControllerImpl(
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val hidManager = DualSenseUsbHidManager.get(appContext)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _uiState = MutableStateFlow(InputTestUiState())
     override val uiState: StateFlow<InputTestUiState> = _uiState
@@ -71,6 +80,7 @@ class InputTestControllerImpl(
     private var inputReaderRunning = false
 
     private var inputReaderThread: Thread? = null
+    private var sharedInputJob: Job? = null
 
     private data class HidHandle(
         val connection: UsbDeviceConnection,
@@ -132,26 +142,20 @@ class InputTestControllerImpl(
     }
 
     init {
-        registerReceiver()
+        // USB HID permission and connection ownership lives in DualSenseUsbHidManager.
     }
 
     override fun onScreenVisible() {
         screenVisible = true
-        if (!ControllerRuntimeState.ledContinuousEffectActive) {
-            refreshConnection()
-        }
+        refreshConnection()
     }
 
     override fun onScreenHidden() {
         screenVisible = false
-        if (!ControllerRuntimeState.ledContinuousEffectActive) {
-            closeHandle()
-        } else {
-            stopInputReader()
-        }
+        sharedInputJob?.cancel()
+        sharedInputJob = null
         _uiState.update {
             it.copy(
-                controllerConnected = false,
                 logText = appContext.getString(R.string.log_screen_hidden_released)
             )
         }
@@ -169,31 +173,31 @@ class InputTestControllerImpl(
             return
         }
 
-        val device = findDualSenseDevice()
-        if (device == null) {
-            closeHandle()
-            setConnectionState(false, appContext.getString(R.string.log_dualsense_not_connected_usb))
-            return
-        }
-
-        if (!usbManager.hasPermission(device)) {
-            requestPermission(device)
-            setConnectionState(false, appContext.getString(R.string.log_usb_permission_required))
-            return
-        }
-
-        reopenHandle(device)
-
-        if (hidHandle != null) {
+        if (hidManager.refreshConnection()) {
             setConnectionState(true, appContext.getString(R.string.log_dualsense_connection_active))
+            startSharedInputReader()
         } else {
-            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
+            setConnectionState(false, hidManager.state.value.logText)
         }
     }
 
     override fun release() {
         unregisterReceiver()
         closeHandle()
+        sharedInputJob?.cancel()
+        scope.cancel()
+    }
+
+    private fun startSharedInputReader() {
+        if (!screenVisible) return
+        if (sharedInputJob?.isActive == true) return
+        sharedInputJob = scope.launch {
+            hidManager.inputReports.collect { report ->
+                if (screenVisible) {
+                    parseInputReport(report, report.size)
+                }
+            }
+        }
     }
 
     private fun setConnectionState(

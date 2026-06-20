@@ -27,6 +27,7 @@ import com.DueBoysenberry1226.ps5ctbro.audio.AudioController
 import com.DueBoysenberry1226.ps5ctbro.audio.AudioControllerImpl
 import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionRepository
 import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerConnectionType
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +52,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val preferences = application.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val appContext = application.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val hidManager = DualSenseUsbHidManager.get(appContext)
     private val usageStatsManager =
         appContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     private val appOpsManager = appContext.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -574,27 +576,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         changedValue: Int? = null,
         updateLog: Boolean = true
     ): Boolean {
-        val handle = reopenByteTestHandle(device)
-
-        if (handle == null) {
+        if (!hidManager.refreshConnection()) {
             if (updateLog) {
-                setByteTestLog("Byte Test HID OUT endpoint could not be opened.")
+                setByteTestLog(hidManager.state.value.logText)
             }
             return false
         }
 
-        val sent = try {
-            handle.connection.bulkTransfer(
-                handle.outEndpoint,
-                report,
-                report.size,
-                1000
-            )
-        } catch (_: Throwable) {
-            -1
-        }
+        val ok = hidManager.send(report, 1000)
 
-        if (sent == report.size) {
+        if (ok) {
             if (updateLog) {
                 if (changedIndex != null && changedValue != null) {
                     val hexValue = "0x" + changedValue.toString(16).uppercase().padStart(2, '0')
@@ -605,9 +596,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
             return true
         } else {
-            closeByteTestHandle()
             if (updateLog) {
-                setByteTestLog("Send failed. sent=$sent / expected=${report.size}")
+                setByteTestLog("Send failed. ${hidManager.state.value.logText}")
             }
             return false
         }

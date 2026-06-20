@@ -1,41 +1,73 @@
 package com.DueBoysenberry1226.ps5ctbro.audio
 
+import android.content.Context
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseOutputReportMerger
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 
 private const val USB_RECIP_INTERFACE = 0x01
 
 class DualSenseUsbController(
-    private val connection: UsbDeviceConnection,
-    private val usbInterface: UsbInterface,
-    private val outEndpoint: UsbEndpoint,
-    private val inEndpoint: UsbEndpoint
+    private val connection: UsbDeviceConnection? = null,
+    private val usbInterface: UsbInterface? = null,
+    private val outEndpoint: UsbEndpoint? = null,
+    private val inEndpoint: UsbEndpoint? = null,
+    private val sharedHidManager: DualSenseUsbHidManager? = null
 ) {
     fun send(report: ByteArray): Boolean {
-        val sent = connection.bulkTransfer(outEndpoint, report, report.size, 1000)
+        sharedHidManager?.let { return it.send(report) }
+        val conn = connection ?: return false
+        val endpoint = outEndpoint ?: return false
+        val mergedReport = DualSenseOutputReportMerger.merge(report)
+        val sent = conn.bulkTransfer(endpoint, mergedReport, mergedReport.size, 1000)
+        if (sent != mergedReport.size) return false
+
+        if (DualSenseOutputReportMerger.isMusicRumbleRouteActive()) {
+            val wakeReport = DualSenseOutputReportMerger.musicRumbleWakeReport()
+            try {
+                conn.bulkTransfer(endpoint, wakeReport, wakeReport.size, 1000)
+            } catch (_: Throwable) {
+            }
+        }
+
+        return true
+    }
+
+    fun sendRaw(report: ByteArray): Boolean {
+        sharedHidManager?.let { return it.sendRaw(report) }
+        val conn = connection ?: return false
+        val endpoint = outEndpoint ?: return false
+        val sent = conn.bulkTransfer(endpoint, report, report.size, 1000)
         return sent == report.size
     }
 
     fun receive(buffer: ByteArray, timeout: Int = 10): Int {
-        return connection.bulkTransfer(inEndpoint, buffer, buffer.size, timeout)
+        sharedHidManager?.let { return it.receive(buffer, timeout) }
+        val conn = connection ?: return -1
+        val endpoint = inEndpoint ?: return -1
+        return conn.bulkTransfer(endpoint, buffer, buffer.size, timeout)
     }
 
     fun getFeatureReport(reportId: Int, buffer: ByteArray): Int {
+        sharedHidManager?.let { return it.getFeatureReport(reportId, buffer) }
         if (buffer.isEmpty()) return -1
+        val conn = connection ?: return -1
+        val intf = usbInterface ?: return -1
 
         return try {
             buffer.fill(0)
             buffer[0] = reportId.toByte()
 
-            connection.controlTransfer(
+            conn.controlTransfer(
                 UsbConstants.USB_DIR_IN or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
                 0x01, // HID_GET_REPORT
                 (0x03 shl 8) or reportId, // Feature report
-                usbInterface.id,
+                intf.id,
                 buffer,
                 buffer.size,
                 2000
@@ -46,27 +78,30 @@ class DualSenseUsbController(
     }
 
     fun primeAndGetFeatureReport(reportId: Int, buffer: ByteArray): Int {
+        sharedHidManager?.let { return it.primeAndGetFeatureReport(reportId, buffer) }
         if (buffer.isEmpty()) return -1
+        val conn = connection ?: return -1
+        val intf = usbInterface ?: return -1
 
         return try {
             buffer.fill(0)
             buffer[0] = reportId.toByte()
 
-            connection.controlTransfer(
+            conn.controlTransfer(
                 UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
                 0x09, // HID_SET_REPORT
                 (0x03 shl 8) or reportId,
-                usbInterface.id,
+                intf.id,
                 buffer,
                 buffer.size,
                 1000
             )
 
-            connection.controlTransfer(
+            conn.controlTransfer(
                 UsbConstants.USB_DIR_IN or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
                 0x01, // HID_GET_REPORT
                 (0x03 shl 8) or reportId,
-                usbInterface.id,
+                intf.id,
                 buffer,
                 buffer.size,
                 2000
@@ -77,18 +112,25 @@ class DualSenseUsbController(
     }
 
     fun close() {
+        if (sharedHidManager != null) return
         try {
-            connection.releaseInterface(usbInterface)
+            usbInterface?.let { connection?.releaseInterface(it) }
         } catch (_: Throwable) {
         }
 
         try {
-            connection.close()
+            connection?.close()
         } catch (_: Throwable) {
         }
     }
 
     companion object {
+        fun shared(context: Context): DualSenseUsbController {
+            return DualSenseUsbController(
+                sharedHidManager = DualSenseUsbHidManager.get(context.applicationContext)
+            )
+        }
+
         fun open(usbManager: UsbManager, device: UsbDevice): DualSenseUsbController? {
             if (!usbManager.hasPermission(device)) return null
 

@@ -147,7 +147,7 @@ fun AppDrawerContent(
                 NavigationDrawerItem(
                     label = {
                         Text(
-                            text = stringResource(section.titleRes),
+                            text = section.titleOverride ?: stringResource(section.titleRes!!),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = if (currentSection == section) {
                                 FontWeight.Bold

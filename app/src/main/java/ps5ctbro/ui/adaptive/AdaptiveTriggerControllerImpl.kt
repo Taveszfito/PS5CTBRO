@@ -15,7 +15,15 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseOutputReportMerger
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedControllerImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -39,6 +47,8 @@ class AdaptiveTriggerControllerImpl(
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val hidManager = DualSenseUsbHidManager.get(appContext)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _uiState = MutableStateFlow(AdaptiveTriggersUiState())
     override val uiState: StateFlow<AdaptiveTriggersUiState> = _uiState
 
@@ -47,6 +57,7 @@ class AdaptiveTriggerControllerImpl(
 
     @Volatile private var inputReaderRunning = false
     private var inputReaderThread: Thread? = null
+    private var sharedInputJob: Job? = null
 
     private var lastLeftRaw = 0
     private var lastRightRaw = 0
@@ -82,17 +93,19 @@ class AdaptiveTriggerControllerImpl(
         }
     }
 
-    init { registerReceiver() }
+    init {
+        // USB HID permission and connection ownership lives in DualSenseUsbHidManager.
+    }
 
     override fun onScreenVisible() {
-        if (!ControllerRuntimeState.ledContinuousEffectActive) {
-            refreshConnection()
-        }
+        refreshConnection()
+        startSharedInputReader()
     }
 
     override fun onScreenHidden() {
-        if (!ControllerRuntimeState.ledContinuousEffectActive && !hasActiveTriggerConfig()) {
-            closeHandle()
+        if (!hasActiveTriggerConfig()) {
+            sharedInputJob?.cancel()
+            sharedInputJob = null
         }
     }
 
@@ -106,7 +119,7 @@ class AdaptiveTriggerControllerImpl(
     }
 
     override fun applyCurrentState() {
-        if (hidHandle == null) {
+        if (!hidManager.state.value.connected) {
             refreshConnection()
         }
         lastLeftSentStrength = -1
@@ -120,7 +133,7 @@ class AdaptiveTriggerControllerImpl(
     }
 
     private fun checkAndApplyActiveHelper(l2Raw: Int, r2Raw: Int) {
-        val handle = hidHandle ?: return
+        if (!hidManager.state.value.connected && !hidManager.refreshConnection()) return
         val state = _uiState.value
         
         val currentL = state.leftTrigger
@@ -150,16 +163,7 @@ class AdaptiveTriggerControllerImpl(
                 rightStrength = rightTargetStrength
             )
             
-            val ledWasActive = ControllerRuntimeState.ledContinuousEffectActive
-            try {
-                handle.connection.bulkTransfer(handle.outEndpoint, report, report.size, 30)
-            } catch (_: Exception) {
-            } finally {
-                if (ledWasActive) {
-                    closeHandle()
-                    LedControllerImpl.getInstance(appContext).resumeContinuousEffectAfterExternalHidReport()
-                }
-            }
+            hidManager.send(report, 30)
         }
     }
 
@@ -221,13 +225,13 @@ class AdaptiveTriggerControllerImpl(
     }
 
     override fun refreshConnection() {
-        val device = findDualSenseDevice() ?: return
-        if (usbManager.hasPermission(device)) {
-            reopenHandle(device)
-            setConnectionState(true, appContext.getString(R.string.log_trigger_connection_active))
-        } else {
-            requestPermission(device)
-        }
+        val connected = hidManager.refreshConnection()
+        setConnectionState(
+            connected,
+            if (connected) appContext.getString(R.string.log_trigger_connection_active)
+            else hidManager.state.value.logText
+        )
+        if (connected) startSharedInputReader()
     }
 
     override fun resetTriggers() {
@@ -238,14 +242,22 @@ class AdaptiveTriggerControllerImpl(
             )
         }
         applyCurrentState()
-        if (ControllerRuntimeState.ledContinuousEffectActive) {
-            closeHandle()
-        }
     }
 
     override fun release() {
         unregisterReceiver()
         closeHandle()
+        sharedInputJob?.cancel()
+        scope.cancel()
+    }
+
+    private fun startSharedInputReader() {
+        if (sharedInputJob?.isActive == true) return
+        sharedInputJob = scope.launch {
+            hidManager.inputReports.collect { report ->
+                parseInputReport(report, report.size)
+            }
+        }
     }
 
     private fun normalizeConfig(config: AdaptiveTriggerConfig): AdaptiveTriggerConfig {

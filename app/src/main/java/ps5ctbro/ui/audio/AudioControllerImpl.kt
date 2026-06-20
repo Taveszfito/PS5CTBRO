@@ -39,6 +39,8 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseOutputReportMerger
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -113,6 +115,11 @@ class AudioControllerImpl private constructor(
         val usbInterface: UsbInterface,
         val endpoint: UsbEndpoint
     )
+
+    private enum class PhysicalAudioRoute {
+        SPEAKER,
+        JACK
+    }
 
     private fun ByteArray.readLe16(offset: Int): Int {
         if (offset + 1 >= size) return 0
@@ -226,6 +233,7 @@ class AudioControllerImpl private constructor(
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val hidManager = DualSenseUsbHidManager.get(appContext)
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val usageStatsManager =
         appContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -263,6 +271,7 @@ class AudioControllerImpl private constructor(
     private var gamePresetToast: Toast? = null
     private var lastForegroundPresetPackage: String? = null
     private var usageAccessPromptShown = false
+    private var physicalAudioRoute = PhysicalAudioRoute.SPEAKER
 
     private var mediaSession: MediaSession? = null
     private var volumeProvider: VolumeProvider? = null
@@ -397,16 +406,16 @@ class AudioControllerImpl private constructor(
             return
         }
 
-        if (channel == 1 || (channel == 2 && enabled)) {
-            resetJackSwitchPath()
-            SystemClock.sleep(120)
-        }
+        val shouldSwitchToJack =
+            channel == 1 && enabled && physicalAudioRoute != PhysicalAudioRoute.JACK
+        val shouldSwitchToSpeaker =
+            channel == 2 && enabled && physicalAudioRoute != PhysicalAudioRoute.SPEAKER
 
         _uiState.update { current ->
             when (channel) {
                 1 -> current.copy(
                     routeCh1 = enabled,
-                    routeCh2 = if (enabled) false else true
+                    routeCh2 = if (enabled) false else current.routeCh2
                 )
 
                 2 -> current.copy(
@@ -422,15 +431,21 @@ class AudioControllerImpl private constructor(
             }
         }
 
-        scope.launch(Dispatchers.IO) {
-            routeHidMutex.withLock {
-                runAudioRoutingHid()
+        if (shouldSwitchToJack || shouldSwitchToSpeaker) {
+            physicalAudioRoute =
+                if (shouldSwitchToJack) PhysicalAudioRoute.JACK else PhysicalAudioRoute.SPEAKER
+
+            scope.launch(Dispatchers.IO) {
+                routeHidMutex.withLock {
+                    runAudioRoutingHid()
+                }
             }
         }
     }
 
     override fun setGameMode(enabled: Boolean) {
         resetGameModeShaper()
+        physicalAudioRoute = PhysicalAudioRoute.SPEAKER
         _uiState.update { current ->
             if (enabled) {
                 current.copy(
@@ -641,11 +656,7 @@ class AudioControllerImpl private constructor(
     }
 
     override fun onScreenVisible() {
-        scope.launch(Dispatchers.IO) {
-            routeHidMutex.withLock {
-                runAudioRoutingHid()
-            }
-        }
+        setControllerConnected(findDualSenseDevice() != null)
     }
 
     override fun onScreenHidden() {
@@ -673,7 +684,7 @@ class AudioControllerImpl private constructor(
             return appContext.getString(R.string.log_usb_permission_start)
         }
 
-        val jackMode = _uiState.value.routeCh1
+        val jackMode = physicalAudioRoute == PhysicalAudioRoute.JACK
 
         val hidLogs = routeHidMutex.withLock {
             buildString {
@@ -915,7 +926,7 @@ class AudioControllerImpl private constructor(
         val gain = _uiState.value.audioGain
         val state = _uiState.value
 
-        val jackMode = state.routeCh1
+        val jackMode = physicalAudioRoute == PhysicalAudioRoute.JACK
 
         val ch1Enabled = state.routeCh1
         val ch2Enabled = state.routeCh2
@@ -952,10 +963,10 @@ class AudioControllerImpl private constructor(
                 writeShortLe(output, outputIndex, if (ch4Enabled) haptic else 0)
                 outputIndex += 2
             } else if (jackMode) {
-                writeShortLe(output, outputIndex, ampLeft)
+                writeShortLe(output, outputIndex, if (ch1Enabled) ampLeft else 0)
                 outputIndex += 2
 
-                writeShortLe(output, outputIndex, ampRight)
+                writeShortLe(output, outputIndex, if (ch1Enabled) ampRight else 0)
                 outputIndex += 2
 
                 writeShortLe(output, outputIndex, if (ch3Enabled) ampMono else 0)
@@ -964,7 +975,7 @@ class AudioControllerImpl private constructor(
                 writeShortLe(output, outputIndex, if (ch4Enabled) ampMono else 0)
                 outputIndex += 2
             } else {
-                writeShortLe(output, outputIndex, if (ch1Enabled) ampMono else 0)
+                writeShortLe(output, outputIndex, if (ch2Enabled) ampMono else 0)
                 outputIndex += 2
 
                 writeShortLe(output, outputIndex, if (ch2Enabled) ampMono else 0)
@@ -1359,7 +1370,7 @@ class AudioControllerImpl private constructor(
         speakerKeepAliveJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
                 routeHidMutex.withLock {
-                    runAudioRoutingHid()
+                    runAudioRoutingHid(includeRumbleWake = false)
                 }
                 kotlinx.coroutines.delay(1000)
             }
@@ -1512,31 +1523,102 @@ class AudioControllerImpl private constructor(
             .build()
     }
 
-    private fun runAudioRoutingHid(): String {
+    private fun runAudioRoutingHid(includeRumbleWake: Boolean = true): String {
         try {
             val state = _uiState.value
             if (state.gameMode) {
-                return "GAME haptic route / ${runMusicRumbleHid()}"
+                val rumbleWakeLog = if (includeRumbleWake) runAudioRumbleWakeHid() else null
+
+                return listOfNotNull("GAME haptic route", rumbleWakeLog)
+                    .joinToString(" / ")
             }
 
-            val routeText = if (state.routeCh1) {
-                runJackRoutingHid()
-            } else {
+            val routeLog = runPhysicalAudioRouteHid(physicalAudioRoute)
+            val rumbleWakeLog = if (includeRumbleWake) runAudioRumbleWakeHid() else null
+
+            return listOfNotNull(routeLog, rumbleWakeLog).joinToString(" / ")
+        } finally {
+            if (_uiState.value.isStreaming) {
+                releaseDualSenseHidHandle()
+            }
+        }
+    }
+
+    private fun runPhysicalAudioRouteHid(route: PhysicalAudioRoute): String {
+        return when (route) {
+            PhysicalAudioRoute.SPEAKER -> {
                 val first = runSpeakerHid()
                 SystemClock.sleep(40)
                 val second = runSpeakerHid()
                 "$first / SPEAKER confirm: $second"
             }
 
-            return if (state.routeCh3 || state.routeCh4) {
-                "$routeText / ${runMusicRumbleHid()}"
-            } else {
-                routeText
+            PhysicalAudioRoute.JACK -> runJackRoutingHid()
+        }
+    }
+
+    private fun runAudioRumbleWakeHid(): String {
+        val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
+        val wakeTemplate = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+
+        wakeTemplate[0] = DS_OUTPUT_REPORT_USB.toByte()
+        wakeTemplate[2] = 0x15.toByte()
+        wakeTemplate[39] = 0x03.toByte()
+        wakeTemplate[42] = 0x02.toByte()
+        wakeTemplate[43] = 0x00.toByte()
+
+        DualSenseOutputReportMerger.merge(wakeTemplate)
+        val report = DualSenseOutputReportMerger.musicRumbleWakeReport()
+        val ok = controller.sendRaw(report)
+        if (ok) {
+            DualSenseOutputReportMerger.merge(report)
+        }
+        if (ok) {
+            SystemClock.sleep(35)
+        } else if (!_uiState.value.isStreaming) {
+            setControllerConnected(false)
+        }
+
+        return if (ok) "AUDIO RUMBLE WAKE OK" else "AUDIO RUMBLE WAKE Fail"
+    }
+
+    private fun runAllWakeRoutingHid(route: PhysicalAudioRoute): String {
+        val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
+        val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+
+        report[0] = DS_OUTPUT_REPORT_USB.toByte()
+        report[1] = 0xF3.toByte()
+        report[2] = 0x15.toByte()
+        report[5] = 0xFF.toByte()
+        report[7] = 0x40.toByte()
+
+        when (route) {
+            PhysicalAudioRoute.SPEAKER -> {
+                report[6] = 0xFF.toByte()
+                report[8] = 0xFF.toByte()
             }
-        } finally {
-            if (_uiState.value.isStreaming) {
-                releaseDualSenseHidHandle()
+
+            PhysicalAudioRoute.JACK -> {
+                report[6] = 0x00.toByte()
+                report[8] = 0x00.toByte()
             }
+        }
+
+        report[39] = 0x03.toByte()
+        report[42] = 0x02.toByte()
+        report[43] = 0x00.toByte()
+        report[44] = 0x24.toByte()
+
+        val ok = controller.send(report)
+
+        if (!ok && !_uiState.value.isStreaming) {
+            setControllerConnected(false)
+        }
+
+        return if (ok) {
+            "ALL WAKE ${route.name} OK"
+        } else {
+            "ALL WAKE ${route.name} Fail"
         }
     }
 
@@ -1613,14 +1695,15 @@ class AudioControllerImpl private constructor(
         report[7] = 0x40.toByte()
         report[7] = 0x00.toByte()
 
+        val mergedReport = DualSenseOutputReportMerger.merge(report)
         val result = try {
-            connection.bulkTransfer(endpoint, report, report.size, 100)
+            connection.bulkTransfer(endpoint, mergedReport, mergedReport.size, 100)
         } catch (t: Throwable) {
             Log.e(TAG, "Routing HID bulkTransfer failed", t)
             -1
         }
 
-        return result == report.size
+        return result == mergedReport.size
     }
 
     private fun runSpeakerHid(): String {
@@ -1658,20 +1741,34 @@ class AudioControllerImpl private constructor(
 
     private fun runMusicRumbleHid(): String {
         val controller = ensureController() ?: return appContext.getString(R.string.log_no_usb_dualsense)
-        val report = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
-        report[0] = DS_OUTPUT_REPORT_USB.toByte()
-        report[2] = 0x15.toByte()
-        report[39] = 0x03.toByte()
-        report[42] = 0x02.toByte()
-        report[43] = 0x00.toByte()
+        val audioRumbleRoute = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+        audioRumbleRoute[0] = DS_OUTPUT_REPORT_USB.toByte()
+        audioRumbleRoute[1] = 0xE0.toByte()
+        audioRumbleRoute[5] = 0x7F.toByte()
+        audioRumbleRoute[6] = 0xFF.toByte()
+        audioRumbleRoute[7] = 0x40.toByte()
+        audioRumbleRoute[8] = 0x30.toByte()
 
-        val ok = controller.send(report)
+        val wakeReport = ByteArray(DS_OUTPUT_REPORT_USB_SIZE)
+        wakeReport[0] = DS_OUTPUT_REPORT_USB.toByte()
+        wakeReport[2] = 0x15.toByte()
+        wakeReport[39] = 0x03.toByte()
+        wakeReport[42] = 0x02.toByte()
+        wakeReport[43] = 0x00.toByte()
+        wakeReport[44] = 0x24.toByte()
+
+        val routeOk = controller.send(audioRumbleRoute)
+        SystemClock.sleep(35)
+        val wakeOk = controller.send(wakeReport)
+        SystemClock.sleep(35)
+        val loudOk = runSpeakerHid().contains("OK")
+        val ok = routeOk && wakeOk && loudOk
 
         if (!ok && !_uiState.value.isStreaming) {
             setControllerConnected(false)
         }
 
-        return if (ok) "Music rumble OK" else "Music rumble Fail"
+        return if (ok) "Music rumble OK" else "Music rumble Fail route=$routeOk wake=$wakeOk loud=$loudOk"
     }
 
 
@@ -1787,8 +1884,8 @@ class AudioControllerImpl private constructor(
             return null
         }
 
-        closeController()
-        val controller = DualSenseUsbController.open(usbManager, device)
+        val opened = hidManager.refreshConnection()
+        val controller = if (opened) DualSenseUsbController.shared(appContext) else null
         dualSense = controller
 
         val success = controller != null

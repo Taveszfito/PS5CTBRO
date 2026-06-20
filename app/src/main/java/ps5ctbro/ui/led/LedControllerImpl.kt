@@ -17,6 +17,8 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseOutputReportMerger
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -76,6 +78,7 @@ class LedControllerImpl private constructor(
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val hidManager = DualSenseUsbHidManager.get(appContext)
 
     private val audioController = AudioControllerImpl.getInstance(appContext)
 
@@ -194,7 +197,7 @@ class LedControllerImpl private constructor(
     }
 
     init {
-        registerReceiver()
+        // USB HID permission and connection ownership lives in DualSenseUsbHidManager.
     }
 
     override fun onScreenVisible() {
@@ -209,10 +212,8 @@ class LedControllerImpl private constructor(
     override fun onScreenHidden() {
         screenVisible = false
         if (!_uiState.value.config.effect.isContinuousEffect()) {
-            closeHandle()
             _uiState.update {
                 it.copy(
-                    controllerConnected = false,
                     logText = appContext.getString(R.string.log_led_screen_left)
                 )
             }
@@ -239,28 +240,15 @@ class LedControllerImpl private constructor(
     }
 
     override fun refreshConnection() {
-        val device = findDualSenseDevice()
-        if (device == null) {
+        val connected = hidManager.refreshConnection()
+        if (!connected) {
             stopEffectLoop()
-            closeHandle()
             lastSentSnapshot = null
-            setConnectionState(false, appContext.getString(R.string.log_no_usb_dualsense))
+            setConnectionState(false, hidManager.state.value.logText)
             return
         }
 
-        if (!usbManager.hasPermission(device)) {
-            requestPermission(device)
-            setConnectionState(false, appContext.getString(R.string.log_dualsense_found_usb_permission))
-            return
-        }
-
-        reopenHandle(device)
-
-        if (hidHandle != null) {
-            setConnectionState(true, appContext.getString(R.string.log_dualsense_connection_active))
-        } else {
-            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
-        }
+        setConnectionState(true, appContext.getString(R.string.log_dualsense_connection_active))
     }
 
     override fun resetToDefault() {
@@ -290,25 +278,8 @@ class LedControllerImpl private constructor(
     }
 
     override fun sendWakeKick() {
-        val device = findDualSenseDevice()
-        if (device == null) {
-            setConnectionState(false, appContext.getString(R.string.log_no_usb_dualsense))
-            return
-        }
-
-        if (!usbManager.hasPermission(device)) {
-            requestPermission(device)
-            setConnectionState(false, appContext.getString(R.string.log_dualsense_found_usb_permission))
-            return
-        }
-
-        if (hidHandle == null) {
-            reopenHandle(device)
-        }
-
-        val handle = hidHandle
-        if (handle == null) {
-            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
+        if (!hidManager.refreshConnection()) {
+            setConnectionState(false, hidManager.state.value.logText)
             return
         }
 
@@ -326,10 +297,9 @@ class LedControllerImpl private constructor(
 
         // 1) Speaker/audio wake
         val wakeReport = buildWakeKickReport(wakeConfig)
-        val wakeSuccess = sendReport(handle, wakeReport)
+        val wakeSuccess = sendReport(wakeReport)
 
         if (!wakeSuccess) {
-            closeHandle()
             setConnectionState(false, appContext.getString(R.string.log_static_led_failed))
             return
         }
@@ -344,7 +314,7 @@ class LedControllerImpl private constructor(
             lightbarEnabled = true
         )
 
-        val ledSuccess = sendReport(handle, normalLedReport)
+        val ledSuccess = sendReport(normalLedReport)
 
         if (ledSuccess) {
             lastSentSnapshot = snapshotOf(
@@ -354,7 +324,6 @@ class LedControllerImpl private constructor(
             )
             setConnectionState(true, appContext.getString(R.string.log_static_led_applied))
         } else {
-            closeHandle()
             setConnectionState(false, appContext.getString(R.string.log_static_led_failed))
         }
     }
@@ -364,7 +333,6 @@ class LedControllerImpl private constructor(
         if (!config.effect.isContinuousEffect()) return
 
         stopEffectLoop()
-        closeHandle()
         refreshConnection()
         applyConfig(config, triggeredByUserChange = false)
     }
@@ -430,31 +398,10 @@ class LedControllerImpl private constructor(
     ) {
         val normalized = normalizeConfig(config)
 
-        val device = findDualSenseDevice()
-        if (device == null) {
+        if (!hidManager.refreshConnection()) {
             stopEffectLoop()
-            closeHandle()
             lastSentSnapshot = null
-            setConnectionState(false, appContext.getString(R.string.log_no_usb_dualsense))
-            return
-        }
-
-        if (!usbManager.hasPermission(device)) {
-            requestPermission(device)
-            setConnectionState(
-                false,
-                appContext.getString(R.string.log_usb_permission_retry)
-            )
-            return
-        }
-
-        if (hidHandle == null) {
-            reopenHandle(device)
-        }
-
-        val handle = hidHandle
-        if (handle == null) {
-            setConnectionState(false, appContext.getString(R.string.log_hid_interface_not_found))
+            setConnectionState(false, hidManager.state.value.logText)
             return
         }
 
@@ -479,7 +426,7 @@ class LedControllerImpl private constructor(
                     lightbarEnabled = false
                 )
 
-                if (sendReport(handle, report)) {
+                if (sendReport(report)) {
                     lastSentSnapshot = snapshot
                     _uiState.update {
                         it.copy(
@@ -488,7 +435,6 @@ class LedControllerImpl private constructor(
                         )
                     }
                 } else {
-                    closeHandle()
                     setConnectionState(false, appContext.getString(R.string.log_led_off_failed))
                 }
             }
@@ -510,7 +456,7 @@ class LedControllerImpl private constructor(
                     lightbarEnabled = normalized.lightbarBrightnessPercent > 0
                 )
 
-                if (sendReport(handle, report)) {
+                if (sendReport(report)) {
                     lastSentSnapshot = snapshot
                     _uiState.update {
                         it.copy(
@@ -519,7 +465,6 @@ class LedControllerImpl private constructor(
                         )
                     }
                 } else {
-                    closeHandle()
                     setConnectionState(false, appContext.getString(R.string.log_static_led_failed))
                 }
             }
@@ -542,7 +487,7 @@ class LedControllerImpl private constructor(
     }
 
     private fun startEffectLoop(config: LedConfig) {
-        val handle = hidHandle ?: return
+        if (!hidManager.refreshConnection()) return
         if (effectLoopRunning) return
 
         effectLoopRunning = true
@@ -731,7 +676,7 @@ class LedControllerImpl private constructor(
                         micLedEnabledOverride = micLedForMusic
                     )
 
-                    val success = sendReport(handle, report)
+                    val success = sendReport(report)
                     if (!success) {
                         _uiState.update {
                             it.copy(
@@ -740,7 +685,6 @@ class LedControllerImpl private constructor(
                             )
                         }
                         effectLoopRunning = false
-                        closeHandle()
                         break
                     }
 
@@ -910,24 +854,8 @@ class LedControllerImpl private constructor(
         )
     }
 
-    private fun sendReport(
-        handle: HidHandle,
-        report: ByteArray
-    ): Boolean {
-        val sent = try {
-            handle.connection.bulkTransfer(
-                handle.outEndpoint,
-                report,
-                report.size,
-                1000
-            )
-        } catch (_: SecurityException) {
-            -1
-        } catch (_: Throwable) {
-            -1
-        }
-
-        return sent == report.size
+    private fun sendReport(report: ByteArray): Boolean {
+        return hidManager.send(report, 1000)
     }
 
     private fun setConnectionState(

@@ -15,6 +15,8 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.connection.ControllerRuntimeState
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseOutputReportMerger
+import com.DueBoysenberry1226.ps5ctbro.ui.hid.DualSenseUsbHidManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,7 @@ class VibrationController(private val context: Context) {
 
     private val appContext = context.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val hidManager = DualSenseUsbHidManager.get(appContext)
     private val _uiState = MutableStateFlow(VibrationUiState())
     val uiState: StateFlow<VibrationUiState> = _uiState
 
@@ -67,8 +70,6 @@ class VibrationController(private val context: Context) {
     }
 
     init {
-        val filter = IntentFilter(ACTION_USB_PERMISSION)
-        ContextCompat.registerReceiver(appContext, permissionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         startHeartbeat()
     }
 
@@ -86,32 +87,20 @@ class VibrationController(private val context: Context) {
     }
 
     fun onScreenVisible() {
-        if (!ControllerRuntimeState.ledContinuousEffectActive) {
-            refreshConnection()
-        }
+        refreshConnection()
     }
 
     fun onScreenHidden() {
-        if (!ControllerRuntimeState.ledContinuousEffectActive) {
-            closeHandle()
-        }
         _uiState.update { it.copy(logText = appContext.getString(R.string.log_vibrate_screen_left)) }
     }
 
     fun refreshConnection() {
-        val device = findDualSense()
-        if (device == null) {
-            _uiState.update { it.copy(controllerConnected = false, logText = appContext.getString(R.string.log_no_usb_dualsense)) }
-            return
-        }
-
-        if (usbManager.hasPermission(device)) {
-            reopenHandle(device)
-        } else {
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
-            val intent = PendingIntent.getBroadcast(appContext, 0, Intent(ACTION_USB_PERMISSION), flags)
-            usbManager.requestPermission(device, intent)
-            _uiState.update { it.copy(logText = appContext.getString(R.string.log_usb_permission_requested)) }
+        val connected = hidManager.refreshConnection()
+        _uiState.update {
+            it.copy(
+                controllerConnected = connected,
+                logText = hidManager.state.value.logText
+            )
         }
     }
 
@@ -186,7 +175,7 @@ class VibrationController(private val context: Context) {
     }
 
     fun applyVibration(left: Boolean, right: Boolean) {
-        if (hidHandle == null) {
+        if (!hidManager.state.value.connected) {
             refreshConnection()
         }
 
@@ -238,7 +227,6 @@ class VibrationController(private val context: Context) {
     }
 
     private fun sendVibrationReport(left: Int, right: Int) {
-        val handle = hidHandle ?: return
         val report = ByteArray(48)
         report[0] = 0x02.toByte() // Report ID
         report[1] = 0xFF.toByte() // Enable all
@@ -246,7 +234,13 @@ class VibrationController(private val context: Context) {
         report[3] = right.toByte()
         report[4] = left.toByte()
         
-        handle.connection.bulkTransfer(handle.outEndpoint, report, report.size, 1000)
+        val ok = hidManager.send(report, 1000)
+        _uiState.update {
+            it.copy(
+                controllerConnected = ok || hidManager.state.value.connected,
+                logText = if (ok) it.logText else hidManager.state.value.logText
+            )
+        }
     }
 
     fun release() {

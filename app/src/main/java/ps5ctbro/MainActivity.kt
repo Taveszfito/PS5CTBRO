@@ -22,6 +22,7 @@ import com.DueBoysenberry1226.ps5ctbro.adaptive.TriggerSide
 import com.DueBoysenberry1226.ps5ctbro.service.MediaProjectionForegroundService
 import com.DueBoysenberry1226.ps5ctbro.ui.AppRoot
 import com.DueBoysenberry1226.ps5ctbro.ui.adaptive.AdaptiveTriggersViewModel
+import com.DueBoysenberry1226.ps5ctbro.ui.controllertest.ControllerTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedViewModel
 import com.DueBoysenberry1226.ps5ctbro.ui.mictest.MicTestViewModel
@@ -39,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private val adaptiveTriggersViewModel: AdaptiveTriggersViewModel by viewModels()
     private val ledViewModel: LedViewModel by viewModels()
     private val inputTestViewModel: InputTestViewModel by viewModels()
+    private val controllerTestViewModel: ControllerTestViewModel by viewModels()
     private var inputTestScreenVisible = false
     private var pointerCaptureActive = false
     private val controllerConnectionViewModel: ControllerConnectionViewModel by viewModels()
@@ -114,6 +116,7 @@ class MainActivity : AppCompatActivity() {
                 val adaptiveTriggersUiState by adaptiveTriggersViewModel.uiState.collectAsStateWithLifecycle()
                 val ledUiState by ledViewModel.uiState.collectAsStateWithLifecycle()
                 val inputTestUiState by inputTestViewModel.uiState.collectAsStateWithLifecycle()
+                val controllerTestUiState by controllerTestViewModel.uiState.collectAsStateWithLifecycle()
                 val micTestUiState by micTestViewModel.uiState.collectAsStateWithLifecycle()
                 val btTouchpadSensitivity by inputTestViewModel.btTouchpadSensitivity.collectAsStateWithLifecycle()
                 val vibrationUiState by vibrationViewModel.uiState.collectAsStateWithLifecycle()
@@ -125,6 +128,7 @@ class MainActivity : AppCompatActivity() {
                     adaptiveTriggersUiState = adaptiveTriggersUiState,
                     ledUiState = ledUiState,
                     inputTestUiState = inputTestUiState,
+                    controllerTestUiState = controllerTestUiState,
                     micTestUiState = micTestUiState,
                     vibrationUiState = vibrationUiState,
                     controllerConnectionUiState = controllerConnectionUiState,
@@ -194,6 +198,20 @@ class MainActivity : AppCompatActivity() {
                         releaseInputTestPointerCapture()
                     },
                     onRefreshInputTestConnectionClick = inputTestViewModel::refreshConnection,
+                    onControllerTestScreenVisible = controllerTestViewModel::onScreenVisible,
+                    onControllerTestScreenHidden = controllerTestViewModel::onScreenHidden,
+                    onRefreshControllerTestConnectionClick = controllerTestViewModel::refreshConnection,
+                    onControllerTestRunningChanged = controllerTestViewModel::setTestRunning,
+                    onControllerTestLightEnabledChanged = controllerTestViewModel::setLightEnabled,
+                    onControllerTestRumbleEnabledChanged = controllerTestViewModel::setRumbleEnabled,
+                    onControllerTestMicLedEnabledChanged = controllerTestViewModel::setMicLedEnabled,
+                    onControllerTestPlayerLedEnabledChanged = controllerTestViewModel::setPlayerLedEnabled,
+                    onControllerTestRedChanged = controllerTestViewModel::setRed,
+                    onControllerTestGreenChanged = controllerTestViewModel::setGreen,
+                    onControllerTestBlueChanged = controllerTestViewModel::setBlue,
+                    onControllerTestLeftRumbleChanged = controllerTestViewModel::setLeftRumblePercent,
+                    onControllerTestRightRumbleChanged = controllerTestViewModel::setRightRumblePercent,
+                    onControllerTestSendIntervalChanged = controllerTestViewModel::setSendIntervalMs,
                     onMicDurationChanged = micTestViewModel::setDurationSeconds,
                     onMicPlaybackTargetChanged = micTestViewModel::setPlaybackTarget,
                     onMicStartRecording = ::handleMicTestStartRecording,

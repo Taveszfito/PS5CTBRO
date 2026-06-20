@@ -37,6 +37,7 @@ import com.DueBoysenberry1226.ps5ctbro.audio.GameModeTuning
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppDrawerContent
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppTopBar
 import com.DueBoysenberry1226.ps5ctbro.ui.components.MiniInfoPill
+import com.DueBoysenberry1226.ps5ctbro.ui.controllertest.ControllerTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.inputtest.InputTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedConfig
 import com.DueBoysenberry1226.ps5ctbro.ui.led.LedUiState
@@ -45,6 +46,7 @@ import com.DueBoysenberry1226.ps5ctbro.ui.mictest.MicTestUiState
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.AdaptiveTriggersScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.ByteTestDocsDialog
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.ByteTestScreen
+import com.DueBoysenberry1226.ps5ctbro.ui.screens.ControllerTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.InputTestScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.LedScreen
 import com.DueBoysenberry1226.ps5ctbro.ui.screens.MicTestScreen
@@ -68,6 +70,7 @@ fun AppRoot(
     adaptiveTriggersUiState: AdaptiveTriggersUiState,
     ledUiState: LedUiState,
     inputTestUiState: InputTestUiState,
+    controllerTestUiState: ControllerTestUiState,
     micTestUiState: MicTestUiState,
     btTouchpadSensitivity: Float,
     onBtTouchpadSensitivityChange: (Float) -> Unit,
@@ -113,6 +116,20 @@ fun AppRoot(
     onInputTestScreenVisible: () -> Unit,
     onInputTestScreenHidden: () -> Unit,
     onRefreshInputTestConnectionClick: () -> Unit,
+    onControllerTestScreenVisible: () -> Unit,
+    onControllerTestScreenHidden: () -> Unit,
+    onRefreshControllerTestConnectionClick: () -> Unit,
+    onControllerTestRunningChanged: (Boolean) -> Unit,
+    onControllerTestLightEnabledChanged: (Boolean) -> Unit,
+    onControllerTestRumbleEnabledChanged: (Boolean) -> Unit,
+    onControllerTestMicLedEnabledChanged: (Boolean) -> Unit,
+    onControllerTestPlayerLedEnabledChanged: (Int, Boolean) -> Unit,
+    onControllerTestRedChanged: (Int) -> Unit,
+    onControllerTestGreenChanged: (Int) -> Unit,
+    onControllerTestBlueChanged: (Int) -> Unit,
+    onControllerTestLeftRumbleChanged: (Int) -> Unit,
+    onControllerTestRightRumbleChanged: (Int) -> Unit,
+    onControllerTestSendIntervalChanged: (Int) -> Unit,
     onMicDurationChanged: (Int) -> Unit,
     onMicPlaybackTargetChanged: (MicPlaybackTarget) -> Unit,
     onMicStartRecording: () -> Unit,
@@ -154,6 +171,7 @@ fun AppRoot(
     val adaptiveScreenVisible = currentSection == AppSection.ADAPTIVE_TRIGGERS
     val ledScreenVisible = currentSection == AppSection.LEDS
     val inputTestVisible = currentSection == AppSection.INPUT_TEST || currentSection == AppSection.MOTION_SENSORS
+    val controllerTestVisible = currentSection == AppSection.CONTROLLER_TEST
     val vibrationScreenVisible = currentSection == AppSection.VIBRATE_TEST
     val speakerScreenVisible = currentSection == AppSection.SPEAKER
 
@@ -182,6 +200,13 @@ fun AppRoot(
         if (inputTestVisible) onInputTestScreenVisible() else onInputTestScreenHidden()
         onDispose {
             if (inputTestVisible) onInputTestScreenHidden()
+        }
+    }
+
+    DisposableEffect(controllerTestVisible) {
+        if (controllerTestVisible) onControllerTestScreenVisible() else onControllerTestScreenHidden()
+        onDispose {
+            if (controllerTestVisible) onControllerTestScreenHidden()
         }
     }
 
@@ -226,7 +251,8 @@ fun AppRoot(
                 containerColor = Color.Transparent,
                 topBar = {
                     AppTopBar(
-                        title = stringResource(currentSection.titleRes),
+                        title = currentSection.titleOverride
+                            ?: stringResource(currentSection.titleRes!!),
                         onMenuClick = {
                             scope.launch {
                                 if (drawerState.isClosed) drawerState.open() else drawerState.close()
@@ -347,6 +373,25 @@ fun AppRoot(
                                     onStopRecording = onMicStopRecording,
                                     onPlay = onMicPlay,
                                     onStopPlayback = onMicStopPlayback
+                                )
+                            }
+
+                            AppSection.CONTROLLER_TEST -> {
+                                ControllerTestScreen(
+                                    uiState = controllerTestUiState,
+                                    onRefreshConnectionClick = onRefreshControllerTestConnectionClick,
+                                    onTestRunningChanged = onControllerTestRunningChanged,
+                                    onLightEnabledChanged = onControllerTestLightEnabledChanged,
+                                    onRumbleEnabledChanged = onControllerTestRumbleEnabledChanged,
+                                    onMicLedEnabledChanged = onControllerTestMicLedEnabledChanged,
+                                    onPlayerLedEnabledChanged = onControllerTestPlayerLedEnabledChanged,
+                                    onRedChanged = onControllerTestRedChanged,
+                                    onGreenChanged = onControllerTestGreenChanged,
+                                    onBlueChanged = onControllerTestBlueChanged,
+                                    onLeftRumbleChanged = onControllerTestLeftRumbleChanged,
+                                    onRightRumbleChanged = onControllerTestRightRumbleChanged,
+                                    onSendIntervalChanged = onControllerTestSendIntervalChanged,
+                                    showLogs = showLogs
                                 )
                             }
 
