@@ -27,7 +27,10 @@ class DualSenseUsbController(
         val sent = conn.bulkTransfer(endpoint, mergedReport, mergedReport.size, 1000)
         if (sent != mergedReport.size) return false
 
-        if (DualSenseOutputReportMerger.isMusicRumbleRouteActive()) {
+        if (
+            DualSenseOutputReportMerger.isMusicRumbleRouteActive() &&
+            !DualSenseOutputReportMerger.isDirectRumbleActive()
+        ) {
             val wakeReport = DualSenseOutputReportMerger.musicRumbleWakeReport()
             try {
                 conn.bulkTransfer(endpoint, wakeReport, wakeReport.size, 1000)

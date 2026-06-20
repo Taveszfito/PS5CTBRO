@@ -135,7 +135,10 @@ class DualSenseUsbHidManager private constructor(context: Context) {
             return false
         }
 
-        if (DualSenseOutputReportMerger.isMusicRumbleRouteActive()) {
+        if (
+            DualSenseOutputReportMerger.isMusicRumbleRouteActive() &&
+            !DualSenseOutputReportMerger.isDirectRumbleActive()
+        ) {
             val wakeReport = DualSenseOutputReportMerger.musicRumbleWakeReport()
             try {
                 conn.bulkTransfer(endpoint, wakeReport, wakeReport.size, timeoutMs)

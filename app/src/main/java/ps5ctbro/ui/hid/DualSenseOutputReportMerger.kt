@@ -45,6 +45,7 @@ object DualSenseOutputReportMerger {
     }
     private var audioRouteActive = false
     private var musicRumbleRouteActive = false
+    private var directRumbleActive = false
 
     fun merge(report: ByteArray): ByteArray {
         if (report.isEmpty()) return report
@@ -68,8 +69,15 @@ object DualSenseOutputReportMerger {
         synchronized(lock) {
             state[RIGHT_RUMBLE_INDEX] = 0
             state[LEFT_RUMBLE_INDEX] = 0
+            directRumbleActive = false
             keepMusicRumbleWakeAlive()
             return state.copyOf()
+        }
+    }
+
+    fun isDirectRumbleActive(): Boolean {
+        synchronized(lock) {
+            return directRumbleActive
         }
     }
 
@@ -98,8 +106,15 @@ object DualSenseOutputReportMerger {
 
     private fun mergeAudio(report: ByteArray) {
         val flag0 = report[VALID_FLAG0_INDEX].toInt() and 0xFF
-        val hasAudioRoute = (flag0 and AUDIO_ROUTE_ENABLE_BITS) != 0 || report[SPEAKER_VOLUME_INDEX] != 0.toByte() ||
-                report[SPEAKER_ROUTE_VOLUME_INDEX] != 0.toByte() || report[AUDIO_ROUTE_INDEX] != 0.toByte()
+        val flag1 = report[VALID_FLAG1_INDEX].toInt() and 0xFF
+        val isNativeRumbleReport =
+            flag0 == NATIVE_RUMBLE_FLAG0 || flag1 == NATIVE_RUMBLE_FLAG1
+        val hasAudioRoute =
+            report[SPEAKER_VOLUME_INDEX] != 0.toByte() ||
+                    report[SPEAKER_ROUTE_VOLUME_INDEX] != 0.toByte() ||
+                    report[MIC_VOLUME_INDEX] != 0.toByte() ||
+                    report[AUDIO_ROUTE_INDEX] != 0.toByte() ||
+                    ((flag0 and AUDIO_ROUTE_ENABLE_BITS) != 0 && !isNativeRumbleReport)
         val hasMusicRumbleRoute =
             (report[VALID_FLAG1_INDEX].toInt() and 0xFF) == MUSIC_RUMBLE_FLAG1 &&
                     (report[VALID_FLAG2_INDEX].toInt() and 0xFF) == MUSIC_RUMBLE_VALID_FLAG2 &&
@@ -137,6 +152,8 @@ object DualSenseOutputReportMerger {
             report[RIGHT_RUMBLE_INDEX] != 0.toByte() || report[LEFT_RUMBLE_INDEX] != 0.toByte()
 
         if (!hasRumbleFlags && !hasRumbleBytes) return
+
+        directRumbleActive = hasRumbleBytes
 
         state[VALID_FLAG0_INDEX] =
             if (audioRouteActive) {

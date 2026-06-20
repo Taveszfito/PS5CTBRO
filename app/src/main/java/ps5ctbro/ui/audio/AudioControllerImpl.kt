@@ -790,6 +790,7 @@ class AudioControllerImpl private constructor(
             }
 
             startNewStreamingPipeline(record)
+            startSpeakerKeepAlive()
 
             if (_uiState.value.mutePhoneWhileStreaming) {
                 schedulePhoneMuteForStreaming()
@@ -930,8 +931,9 @@ class AudioControllerImpl private constructor(
 
         val ch1Enabled = state.routeCh1
         val ch2Enabled = state.routeCh2
-        val ch3Enabled = state.routeCh3
-        val ch4Enabled = state.routeCh4
+        val audioRumbleAllowed = !DualSenseOutputReportMerger.isDirectRumbleActive()
+        val ch3Enabled = state.routeCh3 && audioRumbleAllowed
+        val ch4Enabled = state.routeCh4 && audioRumbleAllowed
 
         repeat(frameCount) {
             val left = input[inputIndex++].toInt()
