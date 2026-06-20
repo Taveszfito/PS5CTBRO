@@ -448,4 +448,13 @@
     <string name="toast_allow_usage_access">Permite el acceso de uso para los presets de juego automáticos.</string>
     <string name="toast_game_preset_active">Preset activo: %1$s</string>
     <string name="log_game_preset_auto_active">Preset de juego automático activo: %1$s</string>
+    <string name="card_title_permissions">Permisos</string>
+    <string name="permission_usage_access">Acceso de uso</string>
+    <string name="permission_usage_access_desc">Necesario para la detección automática de presets de juego. Abre la página del sistema de acceso de uso.</string>
+    <string name="permission_microphone">Micrófono</string>
+    <string name="permission_microphone_desc">Necesario para la captura de audio y la prueba de micrófono. Abre la página de permisos de la app.</string>
+    <string name="permission_notifications">Notificaciones</string>
+    <string name="permission_notifications_desc">Necesario para la notificación de streaming en primer plano. Abre la página de ajustes de notificaciones.</string>
+    <string name="permission_bluetooth_connect">Conexión Bluetooth</string>
+    <string name="permission_bluetooth_connect_desc">Necesario para la información del mando por Bluetooth y funciones relacionadas. Abre la página de permisos de la app.</string>
 </resources>

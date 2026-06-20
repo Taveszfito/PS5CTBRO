@@ -448,4 +448,13 @@
     <string name="toast_allow_usage_access">Erlaube den Nutzungszugriff für automatische Spiel-Presets.</string>
     <string name="toast_game_preset_active">Preset aktiv: %1$s</string>
     <string name="log_game_preset_auto_active">Automatisches Spiel-Preset aktiv: %1$s</string>
+    <string name="card_title_permissions">Berechtigungen</string>
+    <string name="permission_usage_access">Nutzungszugriff</string>
+    <string name="permission_usage_access_desc">Erforderlich für die automatische Erkennung von Spiel-Presets. Öffnet die Systemseite für den Nutzungszugriff.</string>
+    <string name="permission_microphone">Mikrofon</string>
+    <string name="permission_microphone_desc">Erforderlich für Audioaufnahme und Mikrofontest. Öffnet die Berechtigungsseite der App.</string>
+    <string name="permission_notifications">Benachrichtigungen</string>
+    <string name="permission_notifications_desc">Erforderlich für die Vordergrund-Streaming-Benachrichtigung. Öffnet die Benachrichtigungseinstellungen.</string>
+    <string name="permission_bluetooth_connect">Bluetooth-Verbindung</string>
+    <string name="permission_bluetooth_connect_desc">Erforderlich für Bluetooth-Controllerinfos und zugehörige Funktionen. Öffnet die Berechtigungsseite der App.</string>
 </resources>

@@ -1,7 +1,10 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.settings
 
+import android.Manifest
 import android.app.Application
+import android.app.AppOpsManager
 import android.app.PendingIntent
+import android.app.usage.UsageStatsManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,6 +16,7 @@ import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
+import android.os.Process
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -47,6 +51,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val preferences = application.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val appContext = application.applicationContext
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val usageStatsManager =
+        appContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+    private val appOpsManager = appContext.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
 
     private var byteTestReceiverRegistered = false
     private var pendingByteSend: PendingByteSend? = null
@@ -58,6 +65,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             currentLanguage = getCurrentLanguageCode(),
             appVersion = getVersionName(),
             audioGain = audioController.uiState.value.audioGain,
+            usageAccessGranted = hasUsageAccessPermission(),
+            recordAudioGranted = hasRecordAudioPermission(),
+            notificationsGranted = hasNotificationPermission(),
+            bluetoothConnectGranted = hasBluetoothConnectPermission(),
             byteTestUnlocked = preferences.getBoolean(KEY_BYTE_TEST_UNLOCKED, false),
             byteTestNotes = loadByteTestNotes(),
             byteTestSendValues = loadByteTestSendValues(),
@@ -202,6 +213,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setShowLogWindows(show: Boolean) {
         _uiState.update { it.copy(showLogWindows = show) }
+    }
+
+    fun refreshPermissionStatuses() {
+        _uiState.update {
+            it.copy(
+                usageAccessGranted = hasUsageAccessPermission(),
+                recordAudioGranted = hasRecordAudioPermission(),
+                notificationsGranted = hasNotificationPermission(),
+                bluetoothConnectGranted = hasBluetoothConnectPermission()
+            )
+        }
     }
 
     fun onVersionClicked() {
@@ -734,6 +756,62 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun byteNoteKey(id: String): String = KEY_BYTE_NOTE_PREFIX + id
     private fun byteSendValueKey(id: String): String = KEY_BYTE_SEND_VALUE_PREFIX + id
+
+    private fun hasUsageAccessPermission(): Boolean {
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOpsManager.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                appContext.packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOpsManager.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                appContext.packageName
+            )
+        }
+
+        if (mode != AppOpsManager.MODE_ALLOWED) {
+            return false
+        }
+
+        val now = System.currentTimeMillis()
+        val stats = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            now - 60_000L,
+            now
+        )
+        return !stats.isNullOrEmpty()
+    }
+
+    private fun hasRecordAudioPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            appContext,
+            Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return true
+        }
+        return ContextCompat.checkSelfPermission(
+            appContext,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasBluetoothConnectPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true
+        }
+        return ContextCompat.checkSelfPermission(
+            appContext,
+            Manifest.permission.BLUETOOTH_CONNECT
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
 
     override fun onCleared() {
         closeByteTestHandle()

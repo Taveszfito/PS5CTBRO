@@ -132,6 +132,7 @@ fun AppRoot(
     onLanguageSelected: (String) -> Unit,
     onGainChanged: (Float) -> Unit,
     onShowLogWindowsChanged: (Boolean) -> Unit,
+    onRefreshSettingsPermissionStatuses: () -> Unit,
     onSettingsVersionClick: () -> Unit,
     onByteTestNoteChanged: (String, String) -> Unit,
     onByteTestSendValueChanged: (String, String) -> Unit,
@@ -388,6 +389,7 @@ fun AppRoot(
                                     onGainChanged = onGainChanged,
                                     onShowLogWindowsChanged = onShowLogWindowsChanged,
                                     onRefreshControllerInfo = onRefreshControllerConnectionClick,
+                                    onRefreshPermissionStatuses = onRefreshSettingsPermissionStatuses,
                                     onVersionClick = onSettingsVersionClick
                                 )
                             }

@@ -457,4 +457,13 @@
     <string name="toast_allow_usage_access">Allow Usage Access for automatic game presets.</string>
     <string name="toast_game_preset_active">%1$s preset active</string>
     <string name="log_game_preset_auto_active">Game preset auto active: %1$s</string>
+    <string name="card_title_permissions">Permissions</string>
+    <string name="permission_usage_access">Usage access</string>
+    <string name="permission_usage_access_desc">Needed for automatic game preset detection. Opens the Usage Access system page.</string>
+    <string name="permission_microphone">Microphone</string>
+    <string name="permission_microphone_desc">Needed for audio capture and microphone test. Opens the app permission page.</string>
+    <string name="permission_notifications">Notifications</string>
+    <string name="permission_notifications_desc">Needed for the foreground streaming notification. Opens the notification settings page.</string>
+    <string name="permission_bluetooth_connect">Bluetooth connect</string>
+    <string name="permission_bluetooth_connect_desc">Needed for Bluetooth controller info and related features. Opens the app permission page.</string>
 </resources>

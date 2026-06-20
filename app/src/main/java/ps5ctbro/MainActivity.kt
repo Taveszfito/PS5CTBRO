@@ -213,6 +213,7 @@ class MainActivity : AppCompatActivity() {
                     onLanguageSelected = settingsViewModel::setLanguage,
                     onGainChanged = settingsViewModel::setAudioGain,
                     onShowLogWindowsChanged = settingsViewModel::setShowLogWindows,
+                    onRefreshSettingsPermissionStatuses = settingsViewModel::refreshPermissionStatuses,
                     onSettingsVersionClick = settingsViewModel::onVersionClicked,
                     onByteTestNoteChanged = settingsViewModel::updateByteTestNote,
                     onByteTestSendValueChanged = settingsViewModel::updateByteTestSendValue,

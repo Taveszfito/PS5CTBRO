@@ -448,4 +448,13 @@
     <string name="toast_allow_usage_access">自動ゲームプリセットのために使用状況へのアクセスを許可してください。</string>
     <string name="toast_game_preset_active">%1$s プリセットを有効化</string>
     <string name="log_game_preset_auto_active">自動ゲームプリセットを有効化: %1$s</string>
+    <string name="card_title_permissions">権限</string>
+    <string name="permission_usage_access">使用状況へのアクセス</string>
+    <string name="permission_usage_access_desc">自動ゲームプリセット検出に必要です。使用状況アクセスのシステム画面を開きます。</string>
+    <string name="permission_microphone">マイク</string>
+    <string name="permission_microphone_desc">音声キャプチャとマイクテストに必要です。アプリの権限画面を開きます。</string>
+    <string name="permission_notifications">通知</string>
+    <string name="permission_notifications_desc">フォアグラウンドでのストリーミング通知に必要です。通知設定画面を開きます。</string>
+    <string name="permission_bluetooth_connect">Bluetooth 接続</string>
+    <string name="permission_bluetooth_connect_desc">Bluetooth コントローラー情報と関連機能に必要です。アプリの権限画面を開きます。</string>
 </resources>

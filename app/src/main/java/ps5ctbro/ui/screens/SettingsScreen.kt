@@ -1,6 +1,11 @@
 package com.DueBoysenberry1226.ps5ctbro.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,14 +24,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.unit.dp
 import com.DueBoysenberry1226.ps5ctbro.R
 import com.DueBoysenberry1226.ps5ctbro.ui.components.AppSliderRow
@@ -59,8 +70,24 @@ fun SettingsScreen(
     onGainChanged: (Float) -> Unit,
     onShowLogWindowsChanged: (Boolean) -> Unit,
     onRefreshControllerInfo: () -> Unit,
+    onRefreshPermissionStatuses: () -> Unit,
     onVersionClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onRefreshPermissionStatuses()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -79,6 +106,39 @@ fun SettingsScreen(
             onLanguageSelected = onLanguageSelected
         )
 
+        PermissionsCard(
+            usageAccessGranted = uiState.usageAccessGranted,
+            recordAudioGranted = uiState.recordAudioGranted,
+            notificationsGranted = uiState.notificationsGranted,
+            bluetoothConnectGranted = uiState.bluetoothConnectGranted,
+            onOpenUsageAccess = {
+                context.startActivity(
+                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                )
+            },
+            onOpenMicrophoneSettings = {
+                openAppDetailsSettings(context)
+            },
+            onOpenNotificationSettings = {
+                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                } else {
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                }
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            },
+            onOpenBluetoothSettings = {
+                openAppDetailsSettings(context)
+            }
+        )
+
         ControllerInfoCard(
             info = uiState.controllerInfo,
             onRefresh = onRefreshControllerInfo
@@ -89,6 +149,15 @@ fun SettingsScreen(
             onVersionClick = onVersionClick
         )
     }
+}
+
+private fun openAppDetailsSettings(context: android.content.Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    )
 }
 
 @Composable
@@ -232,6 +301,93 @@ private fun LanguageCard(
                     label = stringResource(option.labelRes),
                     selected = currentLanguage == option.tag,
                     onClick = { onLanguageSelected(option.tag) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionsCard(
+    usageAccessGranted: Boolean,
+    recordAudioGranted: Boolean,
+    notificationsGranted: Boolean,
+    bluetoothConnectGranted: Boolean,
+    onOpenUsageAccess: () -> Unit,
+    onOpenMicrophoneSettings: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
+    onOpenBluetoothSettings: () -> Unit
+) {
+    SectionCard(title = stringResource(R.string.card_title_permissions)) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            PermissionRow(
+                label = stringResource(R.string.permission_usage_access),
+                subLabel = stringResource(R.string.permission_usage_access_desc),
+                checked = usageAccessGranted,
+                onClick = onOpenUsageAccess
+            )
+            PermissionRow(
+                label = stringResource(R.string.permission_microphone),
+                subLabel = stringResource(R.string.permission_microphone_desc),
+                checked = recordAudioGranted,
+                onClick = onOpenMicrophoneSettings
+            )
+            PermissionRow(
+                label = stringResource(R.string.permission_notifications),
+                subLabel = stringResource(R.string.permission_notifications_desc),
+                checked = notificationsGranted,
+                onClick = onOpenNotificationSettings
+            )
+            PermissionRow(
+                label = stringResource(R.string.permission_bluetooth_connect),
+                subLabel = stringResource(R.string.permission_bluetooth_connect_desc),
+                checked = bluetoothConnectGranted,
+                onClick = onOpenBluetoothSettings
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionRow(
+    label: String,
+    subLabel: String,
+    checked: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+        border = BorderStroke(1.dp, PanelStroke.copy(alpha = 0.65f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = { onClick() }
                 )
             }
         }
