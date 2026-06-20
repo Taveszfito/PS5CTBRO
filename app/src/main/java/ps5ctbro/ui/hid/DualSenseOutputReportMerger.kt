@@ -137,6 +137,7 @@ object DualSenseOutputReportMerger {
             state[VALID_FLAG2_INDEX] =
                 (state[VALID_FLAG2_INDEX].toInt() or MUSIC_RUMBLE_VALID_FLAG2).toByte()
             state[LIGHTBAR_SETUP_INDEX] = MUSIC_RUMBLE_SETUP.toByte()
+            state[MIC_LED_INDEX] = report[MIC_LED_INDEX]
             state[LED_BRIGHTNESS_INDEX] = report[LED_BRIGHTNESS_INDEX]
             if (report[PLAYER_LEDS_INDEX] != 0.toByte()) {
                 state[PLAYER_LEDS_INDEX] = report[PLAYER_LEDS_INDEX]
@@ -216,6 +217,7 @@ object DualSenseOutputReportMerger {
             state[VALID_FLAG2_INDEX] =
                 (state[VALID_FLAG2_INDEX].toInt() or MUSIC_RUMBLE_VALID_FLAG2).toByte()
             state[LIGHTBAR_SETUP_INDEX] = MUSIC_RUMBLE_SETUP.toByte()
+            state[MIC_LED_INDEX] = report[MIC_LED_INDEX]
             state[LED_BRIGHTNESS_INDEX] = report[LED_BRIGHTNESS_INDEX]
             if (report[PLAYER_LEDS_INDEX] != 0.toByte()) {
                 state[PLAYER_LEDS_INDEX] = report[PLAYER_LEDS_INDEX]
